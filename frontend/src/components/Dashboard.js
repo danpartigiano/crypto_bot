@@ -1,5 +1,5 @@
+import React, { useEffect, useState } from 'react';
 import { CategoryScale, Legend, LinearScale, LineElement, PointElement, Title, Tooltip } from 'chart.js';
-import React from 'react';
 //Use charts to show real time data
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS} from 'chart.js';
@@ -7,47 +7,65 @@ import { Chart as ChartJS} from 'chart.js';
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 function Dashboard() {
-    //Replace with real data later
-    const mockData = {
-        labels: ['2024-01-01', '2024-01-05', '2024-01-20'],
+    const [priceData, setPriceData] = useState([]);
+    const [labels, setLabels] = useState([]);
+    
+    useEffect(() => {
+        const ws = new WebSocket("ws://localhost:8000/ws/solana");
+
+        ws.onopen = () => console.log("WebSocket Connected");
+        ws.onerror = (error) => console.error("WebSocket Error:", error);
+        ws.onclose = () => console.warn("WebSocket Disconnected");
+
+        ws.onmessage = (event) => {
+            console.log("Received data:", event.data);
+            const newPrice = parseFloat(event.data);
+            const timestamp = new Date().toLocaleTimeString();
+
+            setPriceData((prevData) => [...prevData.slice(-20), newPrice]);
+            setLabels((prevLabels) => [...prevLabels.slice(-20), timestamp]);
+
+            
+        };
+
+        
+
+        return () => ws.close();
+    }, [priceData, labels]);
+
+    
+    const chartData = {
+        labels: labels,
         datasets: [
             {
-                label: 'Real Time MockData',
-                data: [2000, 2030, 2040],
-                //line color
+                label: 'Solana Price (USD)',
+                data: priceData,
                 borderColor: 'rgba(75, 192, 192, 1)',
-                //background color
                 backgroundColor: 'rgba(75, 192, 192, 0.2)',
                 fill: true,
             }
         ]
-    }
-    const labelValues = {
+    };
+
+    const chartOptions = {
         scales: {
             x: {
-                title: {
-                    display: true,
-                    text: 'Date',
-                }
+                title: {display: true, text: 'Time' },
             },
             y: {
-                title: {
-                    display: true,
-                    text: 'Price',
-                }
+                title: { display: true, text: 'Price (USD)' },
             }
         }
-
     };
 
 
     return (
         <div>
             <h2>Dashboard</h2>
-            <p>This is the Dashboard.</p>
+            <p>Real-time Solana Price.</p>
 
             <div style={{ width: '600px', height: '400px'}}>
-                <Line data={mockData} options={labelValues} />
+                <Line data={chartData} options={chartOptions} />
             </div>
         </div>
     );
