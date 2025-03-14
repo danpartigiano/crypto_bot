@@ -3,7 +3,9 @@ import { CategoryScale, Legend, LinearScale, LineElement, PointElement, Title, T
 //Use charts to show real time data
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS} from 'chart.js';
+import { Filler } from 'chart.js';
 
+ChartJS.register(Filler);
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 function Dashboard() {
