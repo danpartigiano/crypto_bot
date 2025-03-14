@@ -22,8 +22,8 @@ function Dashboard() {
             const newPrice = parseFloat(event.data);
             const timestamp = new Date().toLocaleTimeString();
 
-            setPriceData((prevData) => [...prevData.slice(-20), newPrice]);
-            setLabels((prevLabels) => [...prevLabels.slice(-20), timestamp]);
+            setPriceData(prevData => [...prevData.slice(-20), newPrice]);
+            setLabels(prevLabels => [...prevLabels.slice(-20), timestamp]);
 
             
         };
@@ -31,7 +31,7 @@ function Dashboard() {
         
 
         return () => ws.close();
-    }, [priceData, labels]);
+    }, []);
 
     
     const chartData = {
