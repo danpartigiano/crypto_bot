@@ -6,8 +6,6 @@ import Dashboard from './components/Dashboard';
 import TradeExecution from './components/TradeExecution';
 import TradeHistory from './components/TradeHistory';
 
-import './App.css';
-
 function App() {
   return (
     <Router>
