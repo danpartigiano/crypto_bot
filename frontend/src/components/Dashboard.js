@@ -20,22 +20,35 @@ function Dashboard() {
         ws.onmessage = (event) => {
             console.log("Received data:", event.data);
             const newPrice = parseFloat(event.data);
+            if (isNaN(newPrice)) {
+                console.error("Invlaid price:", event.data);
+                return;
+            }
+
+
             const timestamp = new Date().toLocaleTimeString();
 
-            setPriceData(prevData => [...prevData.slice(-20), newPrice]);
-            setLabels(prevLabels => [...prevLabels.slice(-20), timestamp]);
+            setPriceData(prevData => {
+                const updatedData = [...prevData, newPrice].slice(-20);
+                console.log("Updated priceData:", updatedData);
+                return updatedData;
+            });
+    
+            setLabels(prevLabels => {
+                const updatedLabels = [...prevLabels, timestamp].slice(-20);
+                console.log("Updated labels:", updatedLabels);
+                return updatedLabels;
+            });
 
             
         };
-
-        
 
         return () => ws.close();
     }, []);
 
     
-    const chartData = {
-        labels: labels,
+    const chartData = React.useMemo(() => ({
+        labels: labels.length ? labels : ['Waiting for data...'],
         datasets: [
             {
                 label: 'Solana Price (USD)',
@@ -45,7 +58,7 @@ function Dashboard() {
                 fill: true,
             }
         ]
-    };
+    }), [labels, priceData]);
 
     const chartOptions = {
         scales: {
@@ -65,7 +78,7 @@ function Dashboard() {
             <p>Real-time Solana Price.</p>
 
             <div style={{ width: '600px', height: '400px'}}>
-                <Line data={chartData} options={chartOptions} />
+                <Line key={priceData.length} data={chartData} options={chartOptions} />
             </div>
         </div>
     );
