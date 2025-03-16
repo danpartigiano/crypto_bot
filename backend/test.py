@@ -51,11 +51,11 @@ def add_technical_indicators(df):
     df["color"] = df["diff"].apply(lambda x: "green" if x >= 0 else "red")
     
     # Compute RSI
-    df["rsi"] = momentum.rsi(df["close"], window=1, fillna=False)
+    df["rsi"] = momentum.rsi(df["close"], window=14, fillna=False)
     
     # Compute Moving Averages
-    df["MA7"] = df["close"].rolling(window=1).mean()
-    df["MA20"] = df["close"].rolling(window=1).mean()
+    df["MA7"] = df["close"].rolling(window=7).mean()
+    df["MA20"] = df["close"].rolling(window=20).mean()
     
     return df
 
