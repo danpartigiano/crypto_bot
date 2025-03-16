@@ -4,3 +4,7 @@ websockets
 jinja2
 sqlmodel
 psycopg2-binary
+pandas
+dotenv
+openai
+ta
