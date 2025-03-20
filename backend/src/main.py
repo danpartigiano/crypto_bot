@@ -3,10 +3,12 @@ import json
 import websockets
 import uvicorn
 from fastapi import FastAPI, WebSocket, HTTPException, Depends
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-from starlette.requests import Request
 import logging
+from typing import Annotated
+from pydantic import BaseModel
+import models
+from database import engine, get_db
+from sqlalchemy.orm import Session
 
 # Logging
 logging.basicConfig(level=logging.INFO)
@@ -15,13 +17,25 @@ logger = logging.getLogger(__name__)
 # FastAPI app
 app = FastAPI()
 
-# Location of folder holding html files
-templates = Jinja2Templates(directory="templates")
+#create all of the tables and columns in our postgres DB
+models.Base.metadata.create_all(bind=engine)
+
+db_dependency = Annotated[Session, Depends(get_db)]
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
 
 # Coinbase WebSocket Info
 URI = 'wss://ws-feed.exchange.coinbase.com'
 CHANNEL = 'ticker'
 PRODUCT_IDS = 'SOL-USD'
+
+#TODO endpoints for logging into the site, this includes token making
+
+#TODO endpoints to handle the OAuth from Coinbase or any other platform
+
+#TODO priviledged endpoints to handle trading and other Coinbase account access 
 
 # Function to listen to the Coinbase WebSocket for real-time SOL price updates
 async def get_solana_price(websocket: WebSocket):
@@ -55,18 +69,12 @@ async def get_solana_price(websocket: WebSocket):
     except websockets.exceptions.WebSocketException as e:
         print(e)
 
-
 # WebSocket endpoint for SOL-USD price
 @app.websocket("/ws/solana")
 async def ws_solana(websocket: WebSocket):
     await websocket.accept()
     logger.debug("Recieved request for solana price websocket")
     await get_solana_price(websocket)
-
-# Serve the root page
-@app.get("/", response_class=HTMLResponse)
-async def root(request: Request):
-    return templates.TemplateResponse("/solana_real_time_price.html", {"request":request})
 
 # Run the project with python main.py, this function will handle the rest
 if __name__ == "__main__": 

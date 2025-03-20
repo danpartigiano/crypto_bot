@@ -8,3 +8,5 @@ pandas
 dotenv
 openai
 ta
+asyncpg
+bcrypt
