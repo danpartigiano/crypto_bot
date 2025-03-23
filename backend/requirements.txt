@@ -8,3 +8,7 @@ pandas
 dotenv
 openai
 ta
+TA-lib
+joblib
+ccxt
+scikit-learn
