@@ -1,7 +1,6 @@
 fastapi
 uvicorn
 websockets
-jinja2
 sqlmodel
 psycopg2-binary
 pandas
@@ -10,3 +9,7 @@ openai
 ta
 asyncpg
 bcrypt
+cryptography
+python-jose
+python-multipart
+python-dotenv
