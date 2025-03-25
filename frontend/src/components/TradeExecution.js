@@ -3,11 +3,28 @@ import React, { useState } from 'react';
 function TradeExecution() {
     const [cryptoPair, setCryptoPair] = useState('');
     const [amount, setAmount] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState('');
 
-    const tradeOutPut = (e) => {
+    const tradeOutPut = async (e) => {
         e.preventDefault();
-        //Mock tade output
-        alert(`Trading for ${cryptoPair} with amount ${amount}`);
+        setLoading(true);
+        setMessage('');
+
+        try {
+            const response = await fetch("http://localhost:8000/api/trade", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ cryptoPair, amount: parseFloat(amount) }),
+            });
+
+            const data = await response.json();
+            setMessage(`Trade Status: ${data.status}`);
+        } catch (error) {
+            setMessage("Try again, error trying to execute trade.");
+        } finally {
+            setLoading(false);
+        }
     };
 
 
@@ -21,7 +38,8 @@ function TradeExecution() {
                         type="text"
                         value={cryptoPair}
                         onChange={ (e) => setCryptoPair(e.target.value)}
-                        placeholder="e.g. USD"
+                        placeholder="e.g. SOL/USD"
+                        required
                     />
                 </div>
                 <div>
@@ -31,10 +49,14 @@ function TradeExecution() {
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         placeholder="Amount being traded"
+                        required
                     />
                 </div>
-                <button type="submit">Execute Trade</button>
+                <button type="Submit" disabled={loading}>
+                    {loading ? "Executing..." : "Execute Trade"}
+                </button>
             </form>
+            {message && <p>{message}</p>}
         </div>
     );
 }
