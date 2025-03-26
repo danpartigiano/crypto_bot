@@ -13,6 +13,15 @@ class User(Base):
     hashed_password = Column(LargeBinary)
     active = Column(Boolean, default=True)
 
+class OAuth_State(Base):
+
+    __tablename__ = "oauth_states"
+
+    id = Column(Integer, primary_key=True, index=True)
+    state = Column(String, unique=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+
+
 # holds information about each supported exchange
 class Exchange(Base):
     __tablename__ = "exchanges"

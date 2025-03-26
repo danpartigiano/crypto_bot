@@ -13,12 +13,13 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer, HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from models import User
+from models import User, OAuth_State
 from database import SessionLocal, engine, get_db
 from schemas import UserAuth, UserOut, Token
 import models
 from typing import Annotated, Union, Any
 import bcrypt
+import secrets
 
 
 # Logging
@@ -64,11 +65,14 @@ def verify_password(password: str, hashed_password: str) -> bool:
     password_bytes = password.encode('utf-8')
     return bcrypt.checkpw(password_bytes, hashed_password)
 
-def get_user(db: Session, username: str) -> Union[User, None]:
+def get_user_by_username(db: Session, username: str) -> Union[User, None]:
     return db.query(User).filter(User.username == username).first()
 
+def get_user_by_id(db: Session, id: int) -> Union[User, None]:
+    return db.query(User).filter(User.id == id).first()
+
 def authenticate_user(db: Session, username: str, password: str) -> Union[User, None]:
-    user = get_user(db, username)
+    user = get_user_by_username(db, username)
     if user is None:
         return None
     if not verify_password(password, user.hashed_password):
@@ -97,17 +101,25 @@ async def get_current_user(db: Session, token: Annotated[str, Depends(oauth2_sch
         username = payload.get("sub")
         if username is None:
             raise credentials_exception
-        user = get_user(db, username=username)
+        user = get_user_by_username(db, username=username)
         if user is None:
             raise credentials_exception
         return user
     except JWTException:
         raise credentials_exception
 
+def generate_state() -> str:
+    return secrets.token_urlsafe(16)
+
+def get_oauth_from_state(db: Session, state: str) -> OAuth_State:
+    return db.query(OAuth_State).filter(OAuth_State.state == state).first()
+
 #-------------------------------------------------------------------------------------
 
-@app.get("/coinbase/login", summary="Client login to Coinbase")
+@app.get("/coinbase/url", summary="Returns URL to Coinbase to initiate oauth")
 async def login_coinbase(db: Annotated[Session, Depends(get_db)], token: Annotated[str, Depends(oauth2_scheme)]):
+    
+    #verify the current user
     user_data = await get_current_user(db, token)
 
     if user_data is None:
@@ -115,18 +127,96 @@ async def login_coinbase(db: Annotated[Session, Depends(get_db)], token: Annotat
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired Token"
         )
+
+    #generate the state
+    state = generate_state()
+
+    #construct the url
+    coinbase_auth_url = f"{OAUTH_URL}?client_id={COINBASE_CLIENT_ID}&redirect_uri={COINBASE_REDIRECT_URI}&response_type=code&scope={SCOPE}&state={state}"
+
+
+    #build the response
+    content = {"coinbase_url": coinbase_auth_url}
+    response = JSONResponse(content=content)
+    response.set_cookie(key="state", value=state)
+
+    #link the state to the current user in the database
+    new_oauth_model = OAuth_State(state=state, user_id=user_data.id)
+
+    try:
+        db.add(new_oauth_model)
+        db.commit()
+
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Can't link user to state"
+        )
     
-    auth_url = f"{OAUTH_URL}?client_id={COINBASE_CLIENT_ID}&redirect_uri={COINBASE_REDIRECT_URI}&response_type=code&scope={SCOPE}"
-    return RedirectResponse(auth_url)
+    return response
 
-@app.get("/coinbase/login", summary="Coinbase redirect route")
-async def login_coinbase(db: Annotated[Session, Depends(get_db)], token: Annotated[str, Depends(oauth2_scheme)]):
-    #TODO process returned access token 
-    #TODO how to link the token to the user?
-    return
+@app.get("/coinbase/callback", summary="Coinbase redirect route")
+async def login_coinbase(db: Annotated[Session, Depends(get_db)], request: Request):
+
+    state_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate state",
+    )
+
+    #retrieve all data from the request
+    state_cookie = request.cookies.get("state")
+    state_url = request.query_params.get("state")
+
+    if state_cookie is None or state_url is None or state_url != state_cookie:
+        raise state_exception
+    
+    oauth = get_oauth_from_state(db, state_cookie)
+
+    if oauth is None:
+        raise state_exception
+
+    state_db = oauth.state
+
+    user_data = get_user_by_id(db, id=oauth.user_id)
+
+    if user_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_UNAUTHORIZED,
+            detail="User not found",
+        )
+    
+    #get the coinbase code
+    code = request.query_params.get("code")
+
+    if code is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No code from Coinbase found",
+        )
 
 
+    content = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": COINBASE_REDIRECT_URI,
+        "client_id": COINBASE_CLIENT_ID,
+        "client_secret": COINBASE_CLIENT_SECRET
+    }
 
+    response = requests.post(TOKEN_URL, data=content)
+
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unable to get access tokens from coinbase",
+        )
+
+    #TODO store the tokens securely using another encryption key, for now just send back whether or not this was successful
+    #TODO delete the entry in OAUTH for this user, it will never be used again and we don't want to double up on states
+
+
+    return {"status": "success"}
 
 @app.post('/login', summary="Create access token for user")
 async def login(db: Annotated[Session, Depends(get_db)], form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
