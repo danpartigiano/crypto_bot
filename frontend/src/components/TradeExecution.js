@@ -4,9 +4,13 @@ function TradeExecution() {
     const [cryptoPair, setCryptoPair] = useState('');
     const [amount, setAmount] = useState('');
 
-    const tradeOutPut = (e) => {
+    const tradeOutput = (e) => {
         e.preventDefault();
         //Mock tade output
+        if (!cryptoPair || !amount || parseFloat(amount) <= 0) {
+            alert("Please enter a valid crypto pair and amount.");
+            return;
+        }
         alert(`Trading for ${cryptoPair} with amount ${amount}`);
     };
 
@@ -14,7 +18,7 @@ function TradeExecution() {
     return (
         <div>
             <h2>Trade Execution</h2>
-            <form onSubmit={tradeOutPut}>
+            <form onSubmit={tradeOutput}>
                 <div>
                     <label>Crypto Pair: </label>
                     <input
@@ -27,10 +31,10 @@ function TradeExecution() {
                 <div>
                     <label>Amount: </label>
                     <input
-                        type="number"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        placeholder="Amount being traded"
+                        type="text"
+                        value={cryptoPair}
+                        onChange={(e) => setCryptoPair(e.target.value.toUpperCase())}
+                        placeholder="e.g. BTC/USD"
                     />
                 </div>
                 <button type="submit">Execute Trade</button>

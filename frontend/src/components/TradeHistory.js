@@ -2,9 +2,9 @@ import React from 'react';
 
 function TradeHistory() {
     const mockTrades = [
+        { id: 1, cryptoPair: 'USD', amount: 1.2, results: 'Failed', date: '2024-01-01'},
         { id: 12, cryptoPair: 'USD', amount: 1.2, results: 'Failed', date: '2024-01-01'},
-        { id: 12, cryptoPair: 'USD', amount: 1.2, results: 'Failed', date: '2024-01-01'},
-        { id: 12, cryptoPair: 'USD', amount: 1.2, results: 'Failed', date: '2024-01-01'},
+        { id: 2, cryptoPair: 'USD', amount: 1.2, results: 'Failed', date: '2024-01-01'},
     ];
 
 

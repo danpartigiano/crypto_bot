@@ -1,10 +1,12 @@
 import './App.css';
+import { NavLink } from 'react-router-dom';
 
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link} from 'react-router-dom';
 import Dashboard from './components/Dashboard';
 import TradeExecution from './components/TradeExecution';
 import TradeHistory from './components/TradeHistory';
+import LinkCoinbase from './components/LinkCoinbase';
 
 function App() {
   return (
@@ -14,9 +16,14 @@ function App() {
           <h1>Crypto Bot</h1>
           <nav>
             <ul>
-              <li><Link to ="/">Dashboard</Link></li>
-              <li><Link to ="/trade">Trade Execution</Link></li>
-              <li><Link to ="/history">Trade History</Link></li>
+            <li><NavLink to="/" activeClassName="active">Dashboard</NavLink></li>
+            <li><NavLink to="/trade" activeClassName="active">Trade Execution</NavLink></li>
+            <li><NavLink to="/history" activeClassName="active">Trade History</NavLink></li>
+            <li>
+            <NavLink to="/link-coinbase" className={({ isActive }) => (isActive ? "active" : "")}>
+              Link Coinbase
+            </NavLink>
+          </li>
             </ul>
           </nav>
         </header>
@@ -25,6 +32,7 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/trade" element={<TradeExecution />} />
           <Route path="/history" element={<TradeHistory />} />
+          <Route path="/link-coinbase" element={<LinkCoinbase />} />
         </Routes>
       </div>
     </Router>

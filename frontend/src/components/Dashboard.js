@@ -21,7 +21,7 @@ function Dashboard() {
             console.log("Received data:", event.data);
             const newPrice = parseFloat(event.data);
             if (isNaN(newPrice)) {
-                console.error("Invlaid price:", event.data);
+                console.error("Invalid price:", event.data);
                 return;
             }
 
