@@ -15,45 +15,51 @@ function TradeExecution() {
             const response = await fetch("http://localhost:8000/api/trade", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ cryptoPair, amount: parseFloat(amount) }),
+                body: JSON.stringify({ cryptoPair, amount })
             });
 
-            const data = await response.json();
-            setMessage(`Trade Status: ${data.status}`);
+            const result = await response.json();
+
+            if (response.ok) {
+                setMessage(`Trade status: ${result.status}`);
+            } else {
+                setMessage(`Error: ${result.detail || 'Something went wrong'}`);
+            }
         } catch (error) {
-            setMessage("Try again, error trying to execute trade.");
+            setMessage(`Error: ${error.message}`);
         } finally {
             setLoading(false);
         }
     };
-
 
     return (
         <div>
             <h2>Trade Execution</h2>
             <form onSubmit={tradeOutPut}>
                 <div>
-                    <label>Crypto Pair: </label>
+                    <label htmlFor="cryptoPair">Crypto Pair:</label>
                     <input
                         type="text"
+                        id="cryptoPair"
                         value={cryptoPair}
-                        onChange={ (e) => setCryptoPair(e.target.value)}
-                        placeholder="e.g. SOL/USD"
+                        onChange={(e) => setCryptoPair(e.target.value)}
                         required
                     />
                 </div>
                 <div>
-                    <label>Amount: </label>
+                    <label htmlFor="amount">Amount:</label>
                     <input
                         type="number"
+                        id="amount"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
-                        placeholder="Amount being traded"
                         required
+                        min="0.01"
+                        step="0.01"
                     />
                 </div>
-                <button type="Submit" disabled={loading}>
-                    {loading ? "Executing..." : "Execute Trade"}
+                <button type="submit" disabled={loading}>
+                    {loading ? 'Processing...' : 'Execute Trade'}
                 </button>
             </form>
             {message && <p>{message}</p>}

@@ -21,6 +21,8 @@ from typing import Annotated, Union, Any
 import bcrypt
 import secrets
 
+from fastapi.middleware.cors import CORSMiddleware
+
 
 # Logging
 logging.basicConfig(level=logging.INFO)
@@ -28,6 +30,15 @@ logger = logging.getLogger(__name__)
 
 # FastAPI app
 app = FastAPI()
+
+#connection with frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 #create all of the tables and columns in our postgres DB
 models.Base.metadata.create_all(bind=engine)
@@ -250,6 +261,21 @@ async def create_user(db: Annotated[Session, Depends(get_db)], data: UserAuth):
             detail="User with this username or email already exist"
         )
     return UserOut(username=data.username, email=data.email)
+
+#Trade execution
+@app.post("/api/trade")
+async def execute_trade(data: dict, db: Session = Depends(get_db)):
+    
+    crypto_pair = data.get("cryptoPair")
+    amount = data.get("amount")
+    if not crypto_pair or not amount:
+        raise HTTPException(status_code=400, detail="Invalid data")
+
+   
+    status = "success" 
+
+    
+    return {"status": status}
 
 # Coinbase WebSocket Info
 URI = 'wss://ws-feed.exchange.coinbase.com'
