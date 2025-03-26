@@ -3,42 +3,60 @@ import React, { useState } from 'react';
 function TradeExecution() {
     const [cryptoPair, setCryptoPair] = useState('');
     const [amount, setAmount] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState('');
 
-    const tradeOutput = (e) => {
+    const tradeOutPut = async (e) => {
         e.preventDefault();
-        //Mock tade output
-        if (!cryptoPair || !amount || parseFloat(amount) <= 0) {
-            alert("Please enter a valid crypto pair and amount.");
-            return;
+        setLoading(true);
+        setMessage('');
+
+        try {
+            const response = await fetch("http://localhost:8000/api/trade", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ cryptoPair, amount: parseFloat(amount) }),
+            });
+
+            const data = await response.json();
+            setMessage(`Trade Status: ${data.status}`);
+        } catch (error) {
+            setMessage("Try again, error trying to execute trade.");
+        } finally {
+            setLoading(false);
         }
-        alert(`Trading for ${cryptoPair} with amount ${amount}`);
     };
 
 
     return (
         <div>
             <h2>Trade Execution</h2>
-            <form onSubmit={tradeOutput}>
+            <form onSubmit={tradeOutPut}>
                 <div>
                     <label>Crypto Pair: </label>
                     <input
                         type="text"
                         value={cryptoPair}
                         onChange={ (e) => setCryptoPair(e.target.value)}
-                        placeholder="e.g. USD"
+                        placeholder="e.g. SOL/USD"
+                        required
                     />
                 </div>
                 <div>
                     <label>Amount: </label>
                     <input
-                        type="text"
-                        value={cryptoPair}
-                        onChange={(e) => setCryptoPair(e.target.value.toUpperCase())}
-                        placeholder="e.g. BTC/USD"
+                        type="number"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder="Amount being traded"
+                        required
                     />
                 </div>
-                <button type="submit">Execute Trade</button>
+                <button type="Submit" disabled={loading}>
+                    {loading ? "Executing..." : "Execute Trade"}
+                </button>
             </form>
+            {message && <p>{message}</p>}
         </div>
     );
 }
