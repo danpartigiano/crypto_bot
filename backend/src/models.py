@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, TIMESTAMP, ForeignKey, LargeBinary
+from sqlalchemy import Column, Integer, String, TIMESTAMP, ForeignKey, LargeBinary, Boolean
 from database import Base
 from datetime import datetime, timezone
 
@@ -11,6 +11,7 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(LargeBinary)
+    active = Column(Boolean, default=True)
 
 # holds information about each supported exchange
 class Exchange(Base):
