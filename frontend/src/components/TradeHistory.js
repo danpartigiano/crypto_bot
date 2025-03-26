@@ -1,17 +1,26 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 function TradeHistory() {
-    const mockTrades = [
-        { id: 1, cryptoPair: 'USD', amount: 1.2, results: 'Failed', date: '2024-01-01'},
-        { id: 12, cryptoPair: 'USD', amount: 1.2, results: 'Failed', date: '2024-01-01'},
-        { id: 2, cryptoPair: 'USD', amount: 1.2, results: 'Failed', date: '2024-01-01'},
-    ];
+    const [trades, setTrades] = useState([]);
+    const [loading, setLoading] = useState(true);
 
+    useEffect(() => {
+        fetch("http://localhost:8000/api/trades")
+            .then(res => res.json())
+            .then(data => {
+                setTrades(data);
+                setLoading(false);
+            })
+            .catch(error => {
+                console.error("Error trying to get trade history:", error);
+                setLoading(false);
+            });
+    }, []);
 
     return (
         <div>
             <h2>Trade History</h2>
-            <p>Find past trades here.</p>
+            {loading ? <p>Loading...</p> : (
             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px '}}>
                 <thead>
                     <tr>
@@ -22,7 +31,7 @@ function TradeHistory() {
                     </tr>
                 </thead>
                 <tbody>
-                    {mockTrades.map((trade) => (
+                    {trades.map((trade, index) => (
                         <tr key={trade.id}>
                             <td>{trade.cryptoPair}</td>
                             <td>{trade.amount}</td>
@@ -32,6 +41,7 @@ function TradeHistory() {
                     ))}
                 </tbody>
             </table>
+            )}
         </div>
     );
 }
