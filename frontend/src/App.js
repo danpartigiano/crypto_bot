@@ -2,7 +2,7 @@ import './App.css';
 import { NavLink } from 'react-router-dom';
 
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link} from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route} from 'react-router-dom';
 import Dashboard from './components/Dashboard';
 import TradeExecution from './components/TradeExecution';
 import TradeHistory from './components/TradeHistory';
