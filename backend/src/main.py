@@ -13,10 +13,11 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer, HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+import models
 from models import User, OAuth_State
 from database import SessionLocal, engine, get_db
 from schemas import UserAuth, UserOut, Token
-import models
+from models import Exchange_Auth_Token
 from typing import Annotated, Union, Any
 import bcrypt
 import secrets
@@ -188,7 +189,6 @@ async def login_coinbase(db: Annotated[Session, Depends(get_db)], request: Reque
         raise state_exception
 
     state_db = oauth.state
-
     user_data = get_user_by_id(db, id=oauth.user_id)
 
     if user_data is None:
@@ -205,7 +205,6 @@ async def login_coinbase(db: Annotated[Session, Depends(get_db)], request: Reque
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No code from Coinbase found",
         )
-
 
     content = {
         "grant_type": "authorization_code",
@@ -224,7 +223,25 @@ async def login_coinbase(db: Annotated[Session, Depends(get_db)], request: Reque
         )
 
     #TODO store the tokens securely using another encryption key, for now just send back whether or not this was successful
+    access_token = response.json().get("access_token")
+    refresh_token = response.json().get("refresh_token")
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=response.json().get("expires_in"))
+
+    # Save the token information in the database
+    exchange_auth = Exchange_Auth_Token(
+        user_id=user_data.id,
+        exchange_id=1,  # You might need to associate this with the Coinbase exchange
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_at=expires_at
+    )
+
+    db.add(exchange_auth)
+    db.commit()
+
     #TODO delete the entry in OAUTH for this user, it will never be used again and we don't want to double up on states
+    db.delete(oauth)
+    db.commit()
 
 
     return {"status": "success"}
