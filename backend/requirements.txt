@@ -1,4 +1,5 @@
 fastapi
+<<<<<<< Updated upstream
 uvicorn
 websockets
 jinja2
@@ -12,3 +13,18 @@ TA-lib
 joblib
 ccxt
 scikit-learn
+=======
+uvicorn[standard]
+python-dotenv
+requests
+websockets
+python-jose
+SQLAlchemy
+psycopg2-binary
+bcrypt
+ccxt
+pandas
+TA-Lib
+joblib
+cdp-sdk
+>>>>>>> Stashed changes
