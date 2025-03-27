@@ -85,8 +85,7 @@ function Dashboard() {
 
     return (
         <div className="full-page">
-            <h2>Dashboard</h2>
-            <p>Real-time Solana Price.</p>
+            <h2>Real-time Solana Price</h2>
 
             <div style={{ width: '600px', height: '400px', backgroundColor: 'black', padding: '10px', borderRadius: '8px' }}>
                 <Line key={priceData.length} data={chartData} options={chartOptions} />
