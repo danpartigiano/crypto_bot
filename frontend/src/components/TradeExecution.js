@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import Footer from './Footer';
 
 function TradeExecution() {
+
     const [cryptoPair, setCryptoPair] = useState('');
     const [amount, setAmount] = useState('');
     const [loading, setLoading] = useState(false);
@@ -33,7 +35,7 @@ function TradeExecution() {
     };
 
     return (
-        <div>
+        <div className="full-page">
             <h2>Trade Execution</h2>
             <form onSubmit={tradeOutPut}>
                 <div>
@@ -63,6 +65,7 @@ function TradeExecution() {
                 </button>
             </form>
             {message && <p>{message}</p>}
+            <Footer />
         </div>
     );
 }

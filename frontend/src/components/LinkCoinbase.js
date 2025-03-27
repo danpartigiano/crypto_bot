@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Footer from './Footer';
 
 const LinkCoinbase = () => {
   const [loading, setLoading] = useState(false);
@@ -28,11 +29,12 @@ const LinkCoinbase = () => {
   };
 
   return (
-    <div>
+    <div className="full-page">
       <h2>Link Your Coinbase Account</h2>
       <button onClick={handleLinkCoinbase} disabled={loading}>
         {loading ? "Connecting..." : "Link Coinbase Account"}
       </button>
+      <Footer />
     </div>
   );
 };

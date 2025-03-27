@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import Footer from './Footer';
 
 function TradeHistory() {
     const [trades, setTrades] = useState([]);
@@ -24,7 +25,7 @@ function TradeHistory() {
     }, []);
 
     return (
-        <div>
+        <div className="full-page">
             <h2>Trade History</h2>
             {loading ? <p>Loading...</p> : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px '}}>
@@ -52,6 +53,7 @@ function TradeHistory() {
                     </tbody>
                 </table>
             )}
+            <Footer />
         </div>
     );
 }
