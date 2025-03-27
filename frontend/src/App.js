@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard';
 import TradeExecution from './components/TradeExecution';
 import TradeHistory from './components/TradeHistory';
 import LinkCoinbase from './components/LinkCoinbase';
+import CoinbaseCallback from './components/CoinbaseCallback';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Route path="/trade" element={<TradeExecution />} />
           <Route path="/history" element={<TradeHistory />} />
           <Route path="/link-coinbase" element={<LinkCoinbase />} />
+          <Route path="/callback" element={<CoinbaseCallback />} />
         </Routes>
       </div>
     </Router>

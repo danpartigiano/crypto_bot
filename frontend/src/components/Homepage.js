@@ -11,6 +11,7 @@ function Homepage() {
       <button className="nav-button" onClick={() => navigate('/dashboard')}>Real Time Data</button>
       <button className="nav-button" onClick={() => navigate('/trade')}>Trade Execution</button>
       <button className="nav-button" onClick={() => navigate('/history')}>Trade History</button>
+      <button className="nav-button" onClick={() => navigate('/callback')}>Callback</button>
     </div>
   );
 }

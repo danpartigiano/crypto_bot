@@ -6,18 +6,17 @@ import uvicorn
 import requests
 import logging
 from datetime import datetime, timedelta, timezone
-from jose import jwt
+from jose import jwt, JWTError
 from jwt.exceptions import JWTException
-from fastapi import FastAPI, WebSocket, HTTPException, Depends, status, Request
+from fastapi import FastAPI, WebSocket, HTTPException, Depends, status, Request, APIRouter
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer, HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-import models
 from models import User, OAuth_State
 from database import SessionLocal, engine, get_db
 from schemas import UserAuth, UserOut, Token
-from models import Exchange_Auth_Token
+import models
 from typing import Annotated, Union, Any
 import bcrypt
 import secrets
@@ -53,6 +52,9 @@ load_dotenv()
 COINBASE_CLIENT_ID = os.getenv("COINBASE_CLIENT_ID")
 COINBASE_CLIENT_SECRET = os.getenv("COINBASE_CLIENT_SECRET")
 COINBASE_REDIRECT_URI = os.getenv("COINBASE_REDIRECT_URI")
+
+router = APIRouter()
+
 OAUTH_URL = "https://www.coinbase.com/oauth/authorize"
 TOKEN_URL = "https://api.coinbase.com/oauth/token"
 SCOPE = "wallet:transactions:read wallet:accounts:read wallet:orders:create"
@@ -83,42 +85,43 @@ def get_user_by_username(db: Session, username: str) -> Union[User, None]:
 def get_user_by_id(db: Session, id: int) -> Union[User, None]:
     return db.query(User).filter(User.id == id).first()
 
-def authenticate_user(db: Session, username: str, password: str) -> Union[User, None]:
-    user = get_user_by_username(db, username)
-    if user is None:
-        return None
-    if not verify_password(password, user.hashed_password):
-        return None
-    return user
-
-def create_access_token(username: str, user_id: int, expires_delta: timedelta | None = None) -> str:
-
-    if expires_delta is not None:
-        expires_delta = datetime.now(timezone.utc) + expires_delta
-    else:
-        expires_delta = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-
-    to_encode = {"exp": expires_delta, "sub": username, "id" : user_id}
-    encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, ALGORITHM)
-    return encoded_jwt
-
-async def get_current_user(db: Session, token: Annotated[str, Depends(oauth2_scheme)]) -> Union[User, None]:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, JWT_SECRET_KEY, ALGORITHM)
-        username = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-        user = get_user_by_username(db, username=username)
-        if user is None:
-            raise credentials_exception
+def authenticate_user(db: Session, username: str, password: str):
+    user = db.query(User).filter(User.username == username).first()
+    if user and verify_password(password, user.password):
         return user
-    except JWTException:
-        raise credentials_exception
+    return None
+
+def create_access_token(data: dict, secret_key: str, algorithm: str):
+    expiration = timedelta(hours=1)  # Token expiration time (1 hour)
+    to_encode = data.copy()
+    to_encode.update({"exp": datetime.utcnow() + expiration})
+    
+    # Encode the JWT token
+    return jwt.encode(to_encode, secret_key, algorithm=algorithm)
+
+def validate_jwt(token: str):
+    # Ensure the token has the correct number of segments
+    if len(token.split('.')) != 3:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token format")
+
+def get_current_user(db: Session, token: str):
+    try:
+        # Validate token format
+        validate_jwt(token)
+
+        # Decode the token
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token is invalid")
+        user = db.query(models.User).filter(models.User.username == username).first()
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        return user
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Token decoding error: {str(e)}")
 
 def generate_state() -> str:
     return secrets.token_urlsafe(16)
@@ -129,16 +132,20 @@ def get_oauth_from_state(db: Session, state: str) -> OAuth_State:
 #-------------------------------------------------------------------------------------
 
 @app.get("/coinbase/url", summary="Returns URL to Coinbase to initiate oauth")
-async def login_coinbase(db: Annotated[Session, Depends(get_db)], token: Annotated[str, Depends(oauth2_scheme)]):
+async def login_coinbase(db: Annotated[Session, Depends(get_db)]):
+
+    # token: Annotated[str, Depends(oauth2_scheme)]
     
     #verify the current user
-    user_data = await get_current_user(db, token)
+    # user_data = await get_current_user(db, token)
 
-    if user_data is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired Token"
-        )
+    # if user_data is None:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_401_UNAUTHORIZED,
+    #         detail="Invalid or expired Token"
+    #     )
+
+    # user_data = None
 
     #generate the state
     state = generate_state()
@@ -147,104 +154,76 @@ async def login_coinbase(db: Annotated[Session, Depends(get_db)], token: Annotat
     coinbase_auth_url = f"{OAUTH_URL}?client_id={COINBASE_CLIENT_ID}&redirect_uri={COINBASE_REDIRECT_URI}&response_type=code&scope={SCOPE}&state={state}"
 
 
-    #build the response
-    content = {"coinbase_url": coinbase_auth_url}
-    response = JSONResponse(content=content)
-    response.set_cookie(key="state", value=state)
-
-    #link the state to the current user in the database
-    new_oauth_model = OAuth_State(state=state, user_id=user_data.id)
-
+    # Store the state in the database if you want to track it (Optional)
+    new_oauth_model = OAuth_State(state=state)
     try:
         db.add(new_oauth_model)
         db.commit()
-
-    except IntegrityError:
+    except Exception as e:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Can't link user to state"
-        )
+        raise HTTPException(status_code=400, detail=f"Error saving state to database: {str(e)}")
     
-    return response
+    return JSONResponse(content={"coinbase_url": coinbase_auth_url})
+
 
 @app.get("/coinbase/callback", summary="Coinbase redirect route")
-async def login_coinbase(db: Annotated[Session, Depends(get_db)], request: Request):
+async def coinbase_callback(db: Annotated[Session, Depends(get_db)], request: Request):
+    """
+    Coinbase redirects to this route after the user logs in and authorizes the app.
+    We exchange the authorization code for an access token, and then fetch the username.
+    """
 
-    state_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate state",
-    )
+    # Validate the state parameter here (optional but recommended)
 
-    #retrieve all data from the request
-    state_cookie = request.cookies.get("state")
-    state_url = request.query_params.get("state")
-
-    if state_cookie is None or state_url is None or state_url != state_cookie:
-        raise state_exception
-    
-    oauth = get_oauth_from_state(db, state_cookie)
-
-    if oauth is None:
-        raise state_exception
-
-    state_db = oauth.state
-    user_data = get_user_by_id(db, id=oauth.user_id)
-
-    if user_data is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_UNAUTHORIZED,
-            detail="User not found",
-        )
-    
-    #get the coinbase code
+    # Extract the authorization code and state from the query parameters
     code = request.query_params.get("code")
+    state = request.query_params.get("state")
 
-    if code is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="No code from Coinbase found",
-        )
+    if not code:
+        raise HTTPException(status_code=400, detail="Missing authorization code")
 
-    content = {
+    # 1. Exchange the code for an access token
+    token_url = "https://api.coinbase.com/oauth/token"
+    token_data = {
         "grant_type": "authorization_code",
         "code": code,
-        "redirect_uri": COINBASE_REDIRECT_URI,
         "client_id": COINBASE_CLIENT_ID,
-        "client_secret": COINBASE_CLIENT_SECRET
+        "client_secret": COINBASE_CLIENT_SECRET,
+        "redirect_uri": COINBASE_REDIRECT_URI
     }
 
-    response = requests.post(TOKEN_URL, data=content)
+    token_response = requests.post(token_url, data=token_data)
+    if token_response.status_code != 200:
+        raise HTTPException(status_code=token_response.status_code, detail="Failed to fetch token")
 
-    if response.status_code != 200:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unable to get access tokens from coinbase",
-        )
+    token_info = token_response.json()
+    access_token = token_info.get("access_token")
+    if not access_token:
+        raise HTTPException(status_code=400, detail="Failed to get access token")
 
-    #TODO store the tokens securely using another encryption key, for now just send back whether or not this was successful
-    access_token = response.json().get("access_token")
-    refresh_token = response.json().get("refresh_token")
-    expires_at = datetime.now(timezone.utc) + timedelta(seconds=response.json().get("expires_in"))
+    # 2. Fetch the user's Coinbase account info (e.g., username)
+    user_info_url = "https://api.coinbase.com/v2/user"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    user_response = requests.get(user_info_url, headers=headers)
 
-    # Save the token information in the database
-    exchange_auth = Exchange_Auth_Token(
-        user_id=user_data.id,
-        exchange_id=1,  # You might need to associate this with the Coinbase exchange
-        access_token=access_token,
-        refresh_token=refresh_token,
-        expires_at=expires_at
-    )
+    if user_response.status_code != 200:
+        raise HTTPException(status_code=user_response.status_code, detail="Failed to fetch user info")
 
-    db.add(exchange_auth)
-    db.commit()
+    user_info = user_response.json()
+    username = user_info['data']['name']  # Get the user's name from Coinbase
 
-    #TODO delete the entry in OAUTH for this user, it will never be used again and we don't want to double up on states
-    db.delete(oauth)
-    db.commit()
+    # 3. Store the user info in your database (e.g., username)
+    # Assuming you have a model like 'User' for storing the information
+    new_user = User(username=username, coinbase_access_token=access_token)
+    try:
+        db.add(new_user)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Error storing user info: {str(e)}")
 
-
-    return {"status": "success"}
+    # 4. Redirect the user to a success page or back to the frontend
+    return RedirectResponse(url=f"http://localhost:3000/callback?username={username}")  # Example frontend success page
 
 @app.post('/login', summary="Create access token for user")
 async def login(db: Annotated[Session, Depends(get_db)], form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
@@ -258,9 +237,13 @@ async def login(db: Annotated[Session, Depends(get_db)], form_data: Annotated[OA
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    access_token=create_access_token(user.username, user.id)
+    access_token = create_access_token(
+        {"sub": user.username},  # Data to encode in the token
+        secret_key=JWT_SECRET_KEY,  # Secret key for encoding
+        algorithm=ALGORITHM  # Algorithm used to encode
+    )
 
-    return Token(access_token=access_token, token_type="bearer")
+    return {"access_token": access_token, "token_type": "bearer"}
 
 @app.post('/signup', summary="Create new platform user", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 async def create_user(db: Annotated[Session, Depends(get_db)], data: UserAuth):

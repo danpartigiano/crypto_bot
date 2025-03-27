@@ -10,19 +10,24 @@ const LinkCoinbase = () => {
       const response = await fetch("http://localhost:8000/coinbase/url", {
         method: "GET",
         credentials: "include",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
+        // headers: {
+        //   Authorization: `Bearer ${localStorage.getItem("token")}`,
+        // },
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
       const data = await response.json();
+
       if (data.coinbase_url) {
         window.open(data.coinbase_url, "_blank", "width=600,height=600");
       } else {
         console.error("No Coinbase URL returned.");
       }
     } catch (error) {
-      console.error("Error fetching Coinbase URL:", error);
+      console.error("Error fetching Coinbase URL:", error); 
     } finally {
       setLoading(false);
     }
