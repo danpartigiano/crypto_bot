@@ -13,3 +13,8 @@ cryptography
 python-jose
 python-multipart
 python-dotenv
+pydantic
+pydantic-settings
+pydantic[email]
+python-decouple
+asyncio
