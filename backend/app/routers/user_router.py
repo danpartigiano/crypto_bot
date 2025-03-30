@@ -51,7 +51,7 @@ def user_login(username: str, password: str, db: Session = Depends(get_session))
     return response
 
 @router.post('/logout', summary="Invalidate the current access token")
-def user_info(request: Request, db: Session = Depends(get_session)):
+def user_logout(request: Request, db: Session = Depends(get_session)):
 
     #get token from request
     access_token = request.cookies.get("access_token")
@@ -87,3 +87,28 @@ def user_info(request: Request, db: Session = Depends(get_session)):
     
     user.hashed_password = None
     return user
+
+
+@router.get('/refresh-token', summary="Refresh a current access token")
+def refresh_token(request: Request, db: Session = Depends(get_session)):
+
+    
+
+    access_token = request.cookies.get("access_token")
+
+    user = get_current_user(access_token, db)
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid access token"
+        )
+    
+    access_token=create_access_token(user.username)
+
+    content = {"status" : "success"}
+    response = JSONResponse(content=content)
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True)
+
+    return response
+

@@ -18,3 +18,4 @@ pydantic-settings
 pydantic[email]
 python-decouple
 jwt
+requests

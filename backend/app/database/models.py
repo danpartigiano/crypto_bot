@@ -27,6 +27,21 @@ class OAuth_State(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     state = Column(String, unique=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    username = Column(String, ForeignKey("users.username"))
+
+
+class Exchange_Auth_Token(Base):
+    '''Relations to hold access tokens to exchanges'''
+
+    __tablename__ = "exchange_auth_tokens"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    exchange_name = Column(String, index=True)
+    access_token = Column(LargeBinary)
+    refresh_token = Column(LargeBinary)
+    expires_in = Column(Integer)
+    created_at = Column(TIMESTAMP, default=lambda: datetime.now(timezone.utc))
+    scope = Column(String, nullable=True)
     
 

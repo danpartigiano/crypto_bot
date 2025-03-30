@@ -1,13 +1,12 @@
 from fastapi import Depends
 from app.database.schemas import UserSchema
 from app.utility.utils import get_password_hash, verify_password, decrypt_access_token
-from app.database.models import User, OAuth_State
+from app.database.models import User
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from typing import Union
 from sqlalchemy.future import select
 from fastapi import HTTPException, status
-import secrets
 import logging
 
 logger = logging.getLogger()
@@ -83,13 +82,5 @@ def get_current_user(token: str, db: Session) -> User:
         raise credentials_exception
     
     return user
-    
-def generate_state() -> str:
-    return secrets.token_urlsafe(16) #TODO make sure this has a TTL in DB
-
-def get_oauth_from_state(state: str, db: Session) -> Union[OAuth_State, None]:
-    
-    result = db.execute(select(OAuth_State).where(OAuth_State.state == state))
-    return result.scalars().first()
     
 

@@ -30,7 +30,7 @@ def create_access_token(username: str, expires_delta: timedelta | None = None) -
 
 def decrypt_access_token(token: str) -> Union[str, None]:
 
-    if token == "":
+    if token == "" or token is None:
         return None
         
 
