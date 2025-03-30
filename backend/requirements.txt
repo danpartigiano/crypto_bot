@@ -17,4 +17,4 @@ pydantic
 pydantic-settings
 pydantic[email]
 python-decouple
-asyncio
+jwt
