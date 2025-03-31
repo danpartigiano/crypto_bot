@@ -4,7 +4,8 @@ from app.utility.environment import environment
 
 DATABASE_URL = environment.POSTGRESQL_CONNECTION_STRING
 
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(DATABASE_URL, echo=(not environment.PRODUCTION))
+
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

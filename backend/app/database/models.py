@@ -16,6 +16,8 @@ class User(Base):
     updated_at = Column(TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     active = Column(Boolean, default=True)
 
+
+
     def __str__(self) -> str:
         return self.username
 

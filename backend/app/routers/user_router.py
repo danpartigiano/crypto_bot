@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Request, Depends
 from fastapi.responses import JSONResponse
 from app.database.schemas import UserSchema
-from app.utility.user_helper import add_user_to_db, authenticate_user, get_current_user
+from app.utility import user_helper, coinbase_helper
 from app.utility.utils import create_access_token
 from sqlalchemy.orm import Session
 from app.database.db_connection import get_session
@@ -17,7 +17,7 @@ router = APIRouter(
 @router.post('/create', summary="Create a new user")
 def user_create(data: UserSchema, db: Session = Depends(get_session)):
 
-    new_user = add_user_to_db(data, db)
+    new_user = user_helper.add_user_to_db(data, db)
 
     if new_user is None:
         raise HTTPException(
@@ -34,7 +34,7 @@ def user_login(username: str, password: str, db: Session = Depends(get_session))
     #TODO username and password are sent in plaintext in the url
     #TODO what if an access token is sent and is still valid?
 
-    user = authenticate_user(username, password, db)
+    user = user_helper.authenticate_user(username, password, db)
 
     if user is None:
         raise HTTPException(
@@ -56,7 +56,7 @@ def user_logout(request: Request, db: Session = Depends(get_session)):
     #get token from request
     access_token = request.cookies.get("access_token")
 
-    user = get_current_user(access_token, db)
+    user = user_helper.get_current_user(access_token, db)
 
     if user is None:
         raise HTTPException(
@@ -77,7 +77,7 @@ def user_info(request: Request, db: Session = Depends(get_session)):
     #get token from request
     access_token = request.cookies.get("access_token")
 
-    user = get_current_user(access_token, db)
+    user = user_helper.get_current_user(access_token, db)
 
     if user is None:
         raise HTTPException(
@@ -86,8 +86,10 @@ def user_info(request: Request, db: Session = Depends(get_session)):
         )
     
     user.hashed_password = None
-    return user
+    #TODO replace password field with whether or not the user is linked to coinbase
 
+
+    return user
 
 @router.get('/refresh-token', summary="Refresh a current access token")
 def refresh_token(request: Request, db: Session = Depends(get_session)):
@@ -96,7 +98,7 @@ def refresh_token(request: Request, db: Session = Depends(get_session)):
 
     access_token = request.cookies.get("access_token")
 
-    user = get_current_user(access_token, db)
+    user = user_helper.get_current_user(access_token, db)
 
     if user is None:
         raise HTTPException(
@@ -112,3 +114,4 @@ def refresh_token(request: Request, db: Session = Depends(get_session)):
 
     return response
 
+#TODO does the current user have an account linked to coinbase

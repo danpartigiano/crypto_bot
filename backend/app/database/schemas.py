@@ -9,8 +9,7 @@ class UserSchema(BaseModel):
     username: str = Field(..., min_length=5, max_length=100, description="user username")
     password: str = Field(..., min_length=12, max_length=100, description="user password")
 
-class Token(BaseModel):
+class CoinbaseToken(BaseModel):
     access_token: str
-    sub: str
-    expired: bool
-    valid: bool
+    refresh_token: str
+    user_id: int

@@ -11,6 +11,7 @@ import logging
 
 logger = logging.getLogger()
 
+@staticmethod
 def add_user_to_db(user: UserSchema, db: Session) -> Union[User, None]:
     '''Add the user to the database'''
     
@@ -44,18 +45,21 @@ def add_user_to_db(user: UserSchema, db: Session) -> Union[User, None]:
         db.rollback()
         return None
 
+@staticmethod
 def get_user_by_username(username: str, db: Session) -> Union[User, None]:
     '''Gets the user from the database based on the provided username'''
 
     result =  db.execute(select(User).where(User.username == username))
     return result.scalars().first()
-    
+
+@staticmethod   
 def get_user_by_email(email: str, db: Session) -> Union[User, None]:
     '''Gets the user from the database based on the provided email'''  
     
     result =  db.execute(select(User).where(User.email == email))
     return result.scalars().first()
 
+@staticmethod
 def authenticate_user(username: str, password: str, db: Session) -> Union[User, None]:
     user = get_user_by_username(username=username, db=db)
     if user is None:
@@ -64,6 +68,7 @@ def authenticate_user(username: str, password: str, db: Session) -> Union[User, 
         return None
     return user
 
+@staticmethod
 def get_current_user(token: str, db: Session) -> User:
     
     credentials_exception = HTTPException(
