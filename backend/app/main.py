@@ -5,12 +5,24 @@ import app.database.models #this ensures that the schema is loaded before initia
 from app.routers import user_router, coinbase_router
 import logging
 
+from fastapi.middleware.cors import CORSMiddleware
+
 
 # Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+#Frontend request
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 def startup():
     '''Tasks to be done on startup'''
