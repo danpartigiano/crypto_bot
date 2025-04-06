@@ -7,27 +7,22 @@ const LinkCoinbase = () => {
   const handleLinkCoinbase = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/coinbase/url", {
+      const response = await fetch("http://127.0.0.1:8000/coinbase/oauth-redirect-url", {
         method: "GET",
         credentials: "include",
-        // headers: {
-        //   Authorization: `Bearer ${localStorage.getItem("token")}`,
-        // },
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
       const data = await response.json();
-
       if (data.coinbase_url) {
         window.open(data.coinbase_url, "_blank", "width=600,height=600");
       } else {
         console.error("No Coinbase URL returned.");
       }
     } catch (error) {
-      console.error("Error fetching Coinbase URL:", error); 
+      console.error("Error fetching Coinbase URL:", error);
     } finally {
       setLoading(false);
     }

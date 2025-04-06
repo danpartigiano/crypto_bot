@@ -1,0 +1,5 @@
+.venv/
+__pychache__/
+.env
+cert.pem
+key.pem
