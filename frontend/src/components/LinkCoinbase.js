@@ -7,7 +7,7 @@ const LinkCoinbase = () => {
   const handleLinkCoinbase = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://127.0.0.1:8000/coinbase/oauth-redirect-url", {
+      const response = await fetch("http://localhost:8000/coinbase/oauth-redirect-url", {
         method: "GET",
         credentials: "include",
         headers: {

@@ -27,7 +27,7 @@ const Signup = () => {
     try {
       // Sending signup data as JSON to the /user/create endpoint.
       const response = await axios.post(
-        'http://127.0.0.1:8000/user/create',
+        'http://localhost:8000/user/create',
         formData,
         {
           headers: {

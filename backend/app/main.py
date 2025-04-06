@@ -1,11 +1,10 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.utility.environment import environment
 from app.database.db_connection import engine, Base
 import app.database.models #this ensures that the schema is loaded before initializing the db
 from app.routers import user_router, coinbase_router
 import logging
-
-from fastapi.middleware.cors import CORSMiddleware
 
 
 # Logging
