@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        const response = await axios.get('http://127.0.0.1:8000/user/info', {
+        const response = await axios.get('http://localhost:8000/user/info', {
           withCredentials: true,
         });
         if (response.status === 200) {
@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }) => {
   // Logout function to clear cookies and update state
   const logout = async () => {
     try {
-      await axios.post('http://127.0.0.1:8000/user/logout', {}, { withCredentials: true });
+      await axios.post('http://localhost:8000/user/logout', {}, { withCredentials: true });
       setIsAuthenticated(false);
     } catch (error) {
       console.error('Logout failed:', error);
