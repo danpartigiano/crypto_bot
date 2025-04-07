@@ -132,20 +132,16 @@ def get_oauth_from_state(db: Session, state: str) -> OAuth_State:
 #-------------------------------------------------------------------------------------
 
 @app.get("/coinbase/url", summary="Returns URL to Coinbase to initiate oauth")
-async def login_coinbase(db: Annotated[Session, Depends(get_db)]):
-
-    # token: Annotated[str, Depends(oauth2_scheme)]
+async def login_coinbase(db: Annotated[Session, Depends(get_db)], token: Annotated[str, Depends(oauth2_scheme)]):
     
-    #verify the current user
-    # user_data = await get_current_user(db, token)
+    # verify the current user
+    user_data = get_current_user(db, token)
 
-    # if user_data is None:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         detail="Invalid or expired Token"
-    #     )
-
-    # user_data = None
+    if user_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired Token"
+        )
 
     #generate the state
     state = generate_state()
@@ -225,7 +221,7 @@ async def coinbase_callback(db: Annotated[Session, Depends(get_db)], request: Re
     # 4. Redirect the user to a success page or back to the frontend
     return RedirectResponse(url=f"http://localhost:3000/callback?username={username}")  # Example frontend success page
 
-@app.post('/login', summary="Create access token for user")
+@app.post('/user/login', summary="Create access token for user")
 async def login(db: Annotated[Session, Depends(get_db)], form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
     
     user = authenticate_user(db, form_data.username, form_data.password)
@@ -245,7 +241,7 @@ async def login(db: Annotated[Session, Depends(get_db)], form_data: Annotated[OA
 
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.post('/signup', summary="Create new platform user", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+@app.post('/user/signup', summary="Create new platform user", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 async def create_user(db: Annotated[Session, Depends(get_db)], data: UserAuth):
 
     hashed_password = get_password_hash(data.password)

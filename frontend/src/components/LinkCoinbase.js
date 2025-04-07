@@ -7,13 +7,19 @@ const LinkCoinbase = () => {
   const handleLinkCoinbase = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://127.0.0.1:8000/coinbase/oauth-redirect-url", {
+      const response = await fetch("http://127.0.0.1:8000/coinbase/url", {
         method: "GET",
         credentials: "include",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("Server responded with error:", errText);
+        throw new Error("Failed to fetch Coinbase URL");
+      }
 
       const data = await response.json();
       if (data.coinbase_url) {

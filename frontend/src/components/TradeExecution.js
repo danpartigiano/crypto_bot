@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import React, { useState } from 'react';
-=======
 import React, { useState, useEffect } from 'react';
->>>>>>> 58904a328a6c1220b9665c2e5448d599e525b00d
 import Footer from './Footer';
 
 function TradeExecution() {
@@ -11,9 +7,6 @@ function TradeExecution() {
     const [amount, setAmount] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
-<<<<<<< HEAD
-
-=======
     const [availablePairs, setAvailablePairs] = useState([]);
 
     
@@ -35,7 +28,6 @@ function TradeExecution() {
         fetchPairs();
     }, []);
 
->>>>>>> 58904a328a6c1220b9665c2e5448d599e525b00d
     const tradeOutPut = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -53,11 +45,7 @@ function TradeExecution() {
             if (response.ok) {
                 setMessage(`Trade status: ${result.status}`);
             } else {
-<<<<<<< HEAD
-                setMessage(`Error: ${result.detail || 'Something went wrong'}`);
-=======
                 setMessage(`Error: ${result.detail || 'Error'}`);
->>>>>>> 58904a328a6c1220b9665c2e5448d599e525b00d
             }
         } catch (error) {
             setMessage(`Error: ${error.message}`);
@@ -72,26 +60,17 @@ function TradeExecution() {
             <form onSubmit={tradeOutPut}>
                 <div>
                     <label htmlFor="cryptoPair">Crypto Pair:</label>
-<<<<<<< HEAD
-                    <input
-                        type="text"
-=======
                     <select
->>>>>>> 58904a328a6c1220b9665c2e5448d599e525b00d
                         id="cryptoPair"
                         value={cryptoPair}
                         onChange={(e) => setCryptoPair(e.target.value)}
                         required
-<<<<<<< HEAD
-                    />
-=======
                     >
                         <option value="">Select a Pair</option>
                         {availablePairs.map((pair) => (
                             <option key={pair} value={pair}>{pair}</option>
                         ))}
                     </select>
->>>>>>> 58904a328a6c1220b9665c2e5448d599e525b00d
                 </div>
                 <div>
                     <label htmlFor="amount">Amount:</label>
