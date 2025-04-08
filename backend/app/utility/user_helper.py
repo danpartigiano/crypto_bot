@@ -59,6 +59,13 @@ def get_user_by_email(email: str, db: Session) -> Union[User, None]:
     result =  db.execute(select(User).where(User.email == email))
     return result.scalars().first()
 
+@staticmethod   
+def get_user_by_id(user_id: str, db: Session) -> Union[User, None]:
+    '''Gets the user from the database based on the provided id'''  
+    
+    result =  db.execute(select(User).where(User.id == user_id))
+    return result.scalars().first()
+
 @staticmethod
 def authenticate_user(username: str, password: str, db: Session) -> Union[User, None]:
     user = get_user_by_username(username=username, db=db)

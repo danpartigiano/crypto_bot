@@ -111,7 +111,7 @@ def coinbase_callback(request: Request, db: Session = Depends(get_session)):
     user_data = user_helper.get_current_user(token=access_token, db=db)
 
     #state must match current user
-    if stored_oauth.username != user_data.username:
+    if stored_oauth.user_id != user_data.id:
         state_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="current user not related to current state",

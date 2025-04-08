@@ -23,15 +23,15 @@ def get_state_from_db(state: str, db: Session) -> Union[OAuth_State, None]:
     return result.scalars().first()
 
 @staticmethod
-def get_state_by_username(username: str, db: Session) -> Union[OAuth_State, None]:
-    result = db.execute(select(OAuth_State).where(OAuth_State.username == username))
+def get_state_by_user_id(user_id: str, db: Session) -> Union[OAuth_State, None]:
+    result = db.execute(select(OAuth_State).where(OAuth_State.user_id == user_id))
     return result.scalars().first()
 
 @staticmethod
 def store_state_in_db(user: User, state: str, db: Session) -> Union[OAuth_State, None]:
 
     #link the state to the current user in the database
-    new_oauth_state = OAuth_State(state=state, username=user.username)
+    new_oauth_state = OAuth_State(state=state, user_id=user.id)
 
     try:
         db.add(new_oauth_state)
@@ -62,19 +62,35 @@ def store_new_tokens(response: dict, user: User, db: Session) -> Union[Exchange_
     encrypted_access_token = encrypt(access_token)
     encrypted_refresh_token = encrypt(refresh_token)
 
-    new_exchange_token = Exchange_Auth_Token(
-        user_id = user.id,
-        exchange_name = "coinbase",
-        access_token = encrypted_access_token,
-        refresh_token = encrypted_refresh_token,
-        expires_in = response["expires_in"],
-        scope = response["scope"]
 
-    )
+    #does this user already have tokens
+
+    existing_tokens = db.query(Exchange_Auth_Token).filter(Exchange_Auth_Token.user_id == user.id, Exchange_Auth_Token.exchange_name == "coinbase").first()
+
     try:
-        db.add(new_exchange_token)
-        db.commit()
-        return new_exchange_token
+        if existing_tokens:
+            #update
+            existing_tokens.access_token = encrypted_access_token
+            existing_tokens.refresh_token = encrypted_refresh_token
+            existing_tokens.scope = response["scope"]
+            existing_tokens.expires_in = response["expires_in"]
+            db.commit()
+            return existing_tokens
+        else:
+            #new entry
+            new_exchange_token = Exchange_Auth_Token(
+                user_id = user.id,
+                exchange_name = "coinbase",
+                access_token = encrypted_access_token,
+                refresh_token = encrypted_refresh_token,
+                expires_in = response["expires_in"],
+                scope = response["scope"]
+
+            )
+        
+            db.add(new_exchange_token)
+            db.commit()
+            return new_exchange_token
     
     except SQLAlchemyError as e:
         logger.error(f"DB error trying to add token for {user.username}")
@@ -89,19 +105,19 @@ def remove_state(state: OAuth_State, db: Session) -> Union[OAuth_State, None]:
         return state
     
     except SQLAlchemyError as e:
-        logger.error(f"Error deleting state for {state.username}")
+        logger.error(f"Error deleting state for {state.user_id}")
         db.rollback()
         return None
     
 @staticmethod
 def clear_all_states_for_user(user: User, db: Session) -> bool:
     try:
-        db.query(OAuth_State).filter(OAuth_State.username == user.username).delete(synchronize_session=False)
+        db.query(OAuth_State).filter(OAuth_State.user_id == user.id).delete(synchronize_session=False)
         db.commit()
         return True
     
     except SQLAlchemyError as e:
-        logger.error(f"Error deleting state for {state.username}")
+        logger.error(f"Error deleting state for {user.username}")
         db.rollback()
         return False
     
