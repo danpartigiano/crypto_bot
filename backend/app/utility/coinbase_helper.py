@@ -4,12 +4,10 @@ from typing import Union
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
 from sqlalchemy.exc import SQLAlchemyError
-import secrets
 from sqlalchemy.orm import Session
 from cryptography.fernet import Fernet
 from app.utility.environment import environment
 from app.database.models import Exchange_Auth_Token
-from app.database.schemas import CoinbaseToken
 import json
 import requests
 from requests import Response
@@ -19,13 +17,8 @@ import logging
 
 logger = logging.getLogger()
 
-
 @staticmethod
-def generate_state() -> str:
-    return secrets.token_urlsafe(16) #TODO make sure this has a TTL in DB
-
-@staticmethod
-def get_oauth_from_state(state: str, db: Session) -> Union[OAuth_State, None]:
+def get_state_from_db(state: str, db: Session) -> Union[OAuth_State, None]:
     result = db.execute(select(OAuth_State).where(OAuth_State.state == state))
     return result.scalars().first()
 
@@ -35,10 +28,10 @@ def get_state_by_username(username: str, db: Session) -> Union[OAuth_State, None
     return result.scalars().first()
 
 @staticmethod
-def store_state_in_db(user: User, db: Session) -> Union[OAuth_State, None]:
+def store_state_in_db(user: User, state: str, db: Session) -> Union[OAuth_State, None]:
 
     #link the state to the current user in the database
-    new_oauth_state = OAuth_State(state=generate_state(), username=user.username)
+    new_oauth_state = OAuth_State(state=state, username=user.username)
 
     try:
         db.add(new_oauth_state)
@@ -47,10 +40,7 @@ def store_state_in_db(user: User, db: Session) -> Union[OAuth_State, None]:
 
     except SQLAlchemyError as e:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unable to store state"
-        )
+        return None
 
 @staticmethod    
 def encrypt(data: str) -> bytes:
@@ -63,28 +53,22 @@ def decrypt(data: bytes) -> str:
     return cipher_suite.decrypt(data).decode('utf-8')
 
 @staticmethod
-def store_new_tokens(response: Response, user: User, db: Session) -> Union[Exchange_Auth_Token, None]:
+def store_new_tokens(response: dict, user: User, db: Session) -> Union[Exchange_Auth_Token, None]:
 
-    response_dict = json.loads(response.text)
-
-    
     #encrypt the tokens
-    access_token = response_dict["access_token"]
-    refresh_token = response_dict["refresh_token"]
+    access_token = response["access_token"]
+    refresh_token = response["refresh_token"]
     
-
     encrypted_access_token = encrypt(access_token)
     encrypted_refresh_token = encrypt(refresh_token)
-
-    #TODO validate that scopes match environment
 
     new_exchange_token = Exchange_Auth_Token(
         user_id = user.id,
         exchange_name = "coinbase",
         access_token = encrypted_access_token,
         refresh_token = encrypted_refresh_token,
-        expires_in = response_dict["expires_in"],
-        scope = response_dict["scope"]
+        expires_in = response["expires_in"],
+        scope = response["scope"]
 
     )
     try:
@@ -108,6 +92,20 @@ def remove_state(state: OAuth_State, db: Session) -> Union[OAuth_State, None]:
         logger.error(f"Error deleting state for {state.username}")
         db.rollback()
         return None
+    
+@staticmethod
+def clear_all_states_for_user(user: User, db: Session) -> bool:
+    try:
+        db.query(OAuth_State).filter(OAuth_State.username == user.username).delete(synchronize_session=False)
+        db.commit()
+        return True
+    
+    except SQLAlchemyError as e:
+        logger.error(f"Error deleting state for {state.username}")
+        db.rollback()
+        return False
+    
+
 
 @staticmethod
 def get_coinbase_tokens(user: User, db: Session) -> Union[Exchange_Auth_Token, None]:
@@ -155,6 +153,45 @@ def get_coinbase_user_accounts(token: Exchange_Auth_Token, db: Session):
         return json.loads(response.text)
     else:
         return {}
+
+@staticmethod
+def get_callback_status_page(error_message: HTTPException | None):
+    "Returns an html page used to show if the client's coinbase oauth exchange was successful"
+
+    circle_color = "green"
+    message = "Coinbase Account Linked to Crypto Bot!"
+    symbol = "&#x2714"
+
+    if error_message is not None:
+        #there was an error
+        circle_color = "red"
+        message = f"HTTP ERROR {error_message.status_code}: {error_message.detail}"
+        symbol = "&#10060"
+
+
+    webpage = f"""
+        <html>
+            <head><title>Coinbase OAuth Status</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px; background-color: black;">
+                <div style="margin-bottom: 20px;">
+                    <div style="background-color: {circle_color}; color: white; 
+                                width: 150px; height: 150px; 
+                                border-radius: 50%; display: flex; justify-content: center; align-items: center; 
+                                font-size: 100px; margin: 0 auto;">
+                        {symbol}
+                    </div>
+                </div>
+                <h2 style="color: white;">{message}</h2>
+                <br>
+            </body>
+        </html>
+        """
+
+    return webpage
+            
+
+
+
 
 
 
