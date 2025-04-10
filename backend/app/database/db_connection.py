@@ -6,7 +6,6 @@ DATABASE_URL = environment.POSTGRESQL_CONNECTION_STRING
 
 engine = create_engine(DATABASE_URL, echo=(not environment.PRODUCTION))
 
-
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

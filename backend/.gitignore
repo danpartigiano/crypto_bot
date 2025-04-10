@@ -1,7 +1,11 @@
-/.venv
+/venv/
 /__pycache__
 .env
 cert.pem
 key.pem
 
 /app/utility/.env
+
+/database/__pycache__
+/routers/__pycache__
+/utility/__pycache__

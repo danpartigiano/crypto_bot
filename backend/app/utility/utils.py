@@ -1,10 +1,10 @@
 import bcrypt
+from fastapi import APIRouter, HTTPException, status, Request, Depends
 from datetime import datetime, timedelta, timezone
 from typing import Union
 from datetime import datetime, timezone, timedelta
 from app.utility.environment import environment
-from jose import jwt
-from jwt.exceptions import JWTException
+from jose import jwt, ExpiredSignatureError, JWTError
 
 def get_password_hash(password: str) -> str:
     '''Generates the hash of the given password'''
@@ -29,16 +29,24 @@ def create_access_token(username: str, expires_delta: timedelta | None = None) -
     return encoded_jwt
 
 def decrypt_access_token(token: str) -> Union[str, None]:
-
-    if token == "" or token is None:
-        return None
-        
-
     try:
-        payload = jwt.decode(token, environment.JWT_SECRET_KEY, environment.ALGORITHM)
-        username = payload.get("sub")
-        if username is None:
-            return None
-        return username
-    except JWTException:
-        return None
+        payload = jwt.decode(
+            token,
+            environment.JWT_SECRET_KEY,
+            algorithms=[environment.ALGORITHM]
+        )
+        return payload.get("sub")  # or whatever claim you're storing
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+
+def create_refresh_token(username: str, expires_delta: timedelta | None = None) -> str:
+    if expires_delta is None:
+        expires_delta = datetime.utcnow() + timedelta(days=7)
+    else:
+        expires_delta = datetime.utcnow() + expires_delta
+
+    to_encode = {"exp": expires_delta, "sub": username}
+    return jwt.encode(to_encode, environment.JWT_SECRET_KEY, algorithm=environment.ALGORITHM)

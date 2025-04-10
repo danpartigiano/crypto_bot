@@ -94,8 +94,6 @@ def user_info(request: Request, db: Session = Depends(get_session)):
 @router.get('/refresh-token', summary="Refresh a current access token")
 def refresh_token(request: Request, db: Session = Depends(get_session)):
 
-    
-
     access_token = request.cookies.get("access_token")
 
     user = user_helper.get_current_user(access_token, db)
