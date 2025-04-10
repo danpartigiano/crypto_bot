@@ -3,3 +3,5 @@
 .env
 cert.pem
 key.pem
+
+/app/utility/.env
