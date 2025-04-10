@@ -1,13 +1,31 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Footer from './Footer';
 
 const LinkCoinbase = () => {
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [coinbaseEmail, setCoinbaseEmail] = useState("");
+
+  // Read URL params on mount
+  useEffect(() => {
+    const listener = (event) => {
+      if (event.data.status === "success" && event.data.email) {
+        setSuccessMessage("✅ Successfully linked your Coinbase account!");
+        setCoinbaseEmail(event.data.email);
+      }
+    };
+  
+    window.addEventListener("message", listener);
+  
+    return () => {
+      window.removeEventListener("message", listener);
+    };
+  }, []);
 
   const handleLinkCoinbase = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/coinbase/oauth-redirect-url", {
+      const response = await fetch("http://localhost:8000/cb/oauth-redirect-url", {
         method: "GET",
         credentials: "include",
         headers: {
