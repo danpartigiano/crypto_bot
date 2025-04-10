@@ -19,7 +19,7 @@ def main():
     rest_client = RESTClient(api_key=api_key, api_secret=api_secret, verbose=False)
     
 
-    # Get the actual UUID of the USDC wallet
+   # Get the actual UUID of the USDC wallet
     # wallets = rest_client.get_accounts()
     # wallet_id_usdc = None
 
@@ -33,7 +33,7 @@ def main():
     # if wallet_id_usdc is None:
     #     raise Exception("USDC wallet not found.")
     
-    # get account data
+    # # get account data
     wallet_id_usdc = str(os.getenv("USDC_WALLET_ID"))
     
    
@@ -56,6 +56,11 @@ def main():
             to_buy.append(spot_product)
     
     total_balance = float(rest_client.get_account(wallet_id_usdc)['account']['available_balance']['value'])
+    
+    ########################################
+    ########################################
+    # test to see if the balance is actually getting the code
+    #total_balance = 10
     valid_amount = False
     number_of_products_to_buy = len(to_buy)
 
@@ -127,5 +132,3 @@ def sell_limit_product(rest_client: RESTClient, product_id: str, buy_price: floa
 
 if __name__ == "__main__":
     main()
-
-
