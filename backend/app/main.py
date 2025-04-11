@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.utility.environment import environment
 from app.database.db_connection import engine, Base
 import app.database.models #this ensures that the schema is loaded before initializing the db
-from app.routers import user_router, coinbase_router
+from app.routers import user_router, coinbase_router, bot_router
 import logging, coloredlogs
 
 
@@ -50,6 +50,7 @@ app.add_event_handler("shutdown", shutdown)
 
 app.include_router(user_router.router)
 app.include_router(coinbase_router.router)
+app.include_router(bot_router.router)
 
 #used for testing
 @app.get("/")
