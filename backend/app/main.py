@@ -4,11 +4,12 @@ from app.utility.environment import environment
 from app.database.db_connection import engine, Base
 import app.database.models #this ensures that the schema is loaded before initializing the db
 from app.routers import user_router, coinbase_router
-import logging
+import logging, coloredlogs
 
 
 # Logging
-logging.basicConfig(level=logging.INFO)
+coloredlogs.install()
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()

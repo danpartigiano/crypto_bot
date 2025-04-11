@@ -21,3 +21,6 @@ jwt
 requests
 redis
 authlib
+celery
+coinbase
+coloredlogs

@@ -4,9 +4,9 @@ from sqlalchemy.orm import Session
 from app.database.db_connection import get_session
 from fastapi.responses import JSONResponse, HTMLResponse
 from app.utility.environment import environment
-import requests
-import json
 from authlib.integrations.requests_client import OAuth2Session
+from coinbase.wallet.client import OAuthClient
+from app.utility.TokenService import TokenService
 
 
 
@@ -40,6 +40,18 @@ def login_coinbase(request: Request, db: Session = Depends(get_session)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="unable to clear past state entries for user"
+        )
+    
+
+    #don't allow user to link if they already have tokens here
+    token_service = TokenService(user=user_data, db=db)
+
+    coinbase_access_token = token_service.get_access_token(exchange_name="coinbase")
+
+    if coinbase_access_token is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{user_data.username} already has active coinbase tokens"
         )
 
 
@@ -86,7 +98,7 @@ def coinbase_callback(request: Request, db: Session = Depends(get_session)):
 
     
     #retrieve state from db
-    stored_oauth = coinbase_helper.get_state_from_db(state=url_state, db=db)
+    stored_oauth = coinbase_helper.get_state_by_state(state=url_state, db=db)
 
     if stored_oauth is None:
         state_exception = HTTPException(
@@ -119,6 +131,9 @@ def coinbase_callback(request: Request, db: Session = Depends(get_session)):
         return HTMLResponse(content=coinbase_helper.get_callback_status_page(state_exception), status_code=state_exception.status_code)
 
 
+
+
+
     #get the coinbase code
     code = request.query_params.get("code")
 
@@ -129,33 +144,36 @@ def coinbase_callback(request: Request, db: Session = Depends(get_session)):
         )
         return HTMLResponse(content=coinbase_helper.get_callback_status_page(state_exception), status_code=state_exception.status_code)
 
-    
-    #exchange code for tokens, returns an OAuth2Token
-    coinbase_tokens = oauth_session_coinbase.fetch_token(
-        url=environment.COINBASE_TOKEN_URL,
-        method="POST",
-        grant_type="authorization_code",
-        code=code)
-    
-    if "access_token" in coinbase_tokens and "refresh_token" in coinbase_tokens:
-        db_coinbase_tokens = coinbase_helper.store_new_tokens(response=coinbase_tokens, user=user_data, db=db)
-        if db_coinbase_tokens is None:
-            state_exception = HTTPException(
+    token_service = TokenService(user=user_data, db=db)
+
+    stored_token_status = token_service.exchange_oauth_code_for_tokens(code=code, exchange_name="coinbase")
+
+
+    if stored_token_status:
+         return HTMLResponse(content=coinbase_helper.get_callback_status_page(state_exception), status_code=status.HTTP_200_OK)
+    else:
+        state_exception = HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Unable to store coinbase tokens",
             )
-            return HTMLResponse(content=coinbase_helper.get_callback_status_page(state_exception), status_code=state_exception.status_code)
-    else:
-        state_exception = HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Coinbase token exchange failed",
-        )
         return HTMLResponse(content=coinbase_helper.get_callback_status_page(state_exception), status_code=state_exception.status_code)
-  
 
-    return HTMLResponse(content=coinbase_helper.get_callback_status_page(state_exception), status_code=status.HTTP_200_OK)
-  
+@router.get("/linked", summary="Is the current user linked to coinbase?")
+def login_coinbase(request: Request, db: Session = Depends(get_session)):
 
+    token = request.cookies.get("access_token")
+    
+    #verify the current user
+    user_data = user_helper.get_current_user(token, db)
+    
+    token_service = TokenService(user=user_data, db=db)
+
+    coinbase_access_token = token_service.get_access_token(exchange_name="coinbase")
+
+    if coinbase_access_token is None:
+        return {"linked" : False}
+    else:
+        return {"linked": True}
 
 @router.get("/info", summary="Get current user's coinbase account info")
 def coinbase_account(request: Request, db: Session = Depends(get_session)):
@@ -171,16 +189,21 @@ def coinbase_account(request: Request, db: Session = Depends(get_session)):
             detail="Invalid or expired Token"
         )
     
-    coinbase_token_data = coinbase_helper.get_coinbase_tokens(user=user_data, db=db)
+    token_service = TokenService(user=user_data, db=db)
 
-    if coinbase_token_data is None:
+    coinbase_access_token = token_service.get_access_token(exchange_name="coinbase")
+
+    if coinbase_access_token is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No coinbase tokens found"
         )
     
-    return coinbase_helper.get_coinbase_user_info(coinbase_token_data, db)
 
+    #establish client
+    coinbase_client = OAuthClient(access_token=coinbase_access_token, refresh_token="Our App Handles Refreshing")
+    
+    return coinbase_client.get_current_user()
 
 @router.get("/accounts", summary="Get current user's coinbase accounts")
 def coinbase_account(request: Request, db: Session = Depends(get_session)):
@@ -196,14 +219,20 @@ def coinbase_account(request: Request, db: Session = Depends(get_session)):
             detail="Invalid or expired Token"
         )
     
-    coinbase_token_data = coinbase_helper.get_coinbase_tokens(user=user_data, db=db)
+    token_service = TokenService(user=user_data, db=db)
 
-    if coinbase_token_data is None:
+    coinbase_access_token = token_service.get_access_token(exchange_name="coinbase")
+
+    if coinbase_access_token is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No coinbase tokens found"
         )
     
-    return coinbase_helper.get_coinbase_user_accounts(coinbase_token_data, db)
+
+    #establish client
+    coinbase_client = OAuthClient(access_token=coinbase_access_token, refresh_token="Our App Handles Refreshing")
+    
+    return coinbase_client.get_accounts()
 
 

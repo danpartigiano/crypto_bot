@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Request, Depends, Form
 from fastapi.responses import JSONResponse
 from app.database.schemas import UserSchema
-from app.utility import user_helper, coinbase_helper
+from app.utility import user_helper
 from app.utility.utils import create_access_token
 from sqlalchemy.orm import Session
 from app.database.db_connection import get_session
@@ -86,15 +86,11 @@ def user_info(request: Request, db: Session = Depends(get_session)):
         )
     
     user.hashed_password = None
-    #TODO replace password field with whether or not the user is linked to coinbase
-
 
     return user
 
 @router.get('/refresh-token', summary="Refresh a current access token")
 def refresh_token(request: Request, db: Session = Depends(get_session)):
-
-    
 
     access_token = request.cookies.get("access_token")
 
@@ -113,5 +109,3 @@ def refresh_token(request: Request, db: Session = Depends(get_session)):
     response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False)
 
     return response
-
-#TODO does the current user have an account linked to coinbase
