@@ -1,17 +1,12 @@
 fastapi
 uvicorn
 websockets
-jinja2
 sqlmodel
 psycopg2-binary
 pandas
 dotenv
 openai
 ta
-TA-lib
-joblib
-ccxt
-scikit-learn
 asyncpg
 bcrypt
 cryptography
@@ -24,3 +19,8 @@ pydantic[email]
 python-decouple
 jwt
 requests
+redis
+authlib
+celery
+coinbase
+coloredlogs
