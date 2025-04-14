@@ -44,7 +44,7 @@ def login_coinbase(request: Request, db: Session = Depends(get_session)):
     
 
     #don't allow user to link if they already have tokens here
-    token_service = TokenService(user=user_data, db=db)
+    token_service = TokenService(user_id=user_data.id, db=db)
 
     coinbase_access_token = token_service.get_access_token(exchange_name="coinbase")
 
@@ -144,7 +144,7 @@ def coinbase_callback(request: Request, db: Session = Depends(get_session)):
         )
         return HTMLResponse(content=coinbase_helper.get_callback_status_page(state_exception), status_code=state_exception.status_code)
 
-    token_service = TokenService(user=user_data, db=db)
+    token_service = TokenService(user_id=user_data.id, db=db)
 
     stored_token_status = token_service.exchange_oauth_code_for_tokens(code=code, exchange_name="coinbase")
 
@@ -166,7 +166,7 @@ def login_coinbase(request: Request, db: Session = Depends(get_session)):
     #verify the current user
     user_data = user_helper.get_current_user(token, db)
     
-    token_service = TokenService(user=user_data, db=db)
+    token_service = TokenService(user_id=user_data.id, db=db)
 
     coinbase_access_token = token_service.get_access_token(exchange_name="coinbase")
 
@@ -189,7 +189,7 @@ def coinbase_account(request: Request, db: Session = Depends(get_session)):
             detail="Invalid or expired Token"
         )
     
-    token_service = TokenService(user=user_data, db=db)
+    token_service = TokenService(user_id=user_data.id, db=db)
 
     coinbase_access_token = token_service.get_access_token(exchange_name="coinbase")
 
@@ -219,7 +219,7 @@ def coinbase_account(request: Request, db: Session = Depends(get_session)):
             detail="Invalid or expired Token"
         )
     
-    token_service = TokenService(user=user_data, db=db)
+    token_service = TokenService(user_id=user_data.id, db=db)
 
     coinbase_access_token = token_service.get_access_token(exchange_name="coinbase")
 

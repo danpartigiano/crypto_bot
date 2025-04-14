@@ -18,24 +18,24 @@ logger = logging.getLogger()
 class TokenService:
     """Centralized Exchange Token Management Service"""
 
-    def __init__(self, user: User, db: Session):
+    def __init__(self, user_id: int, db: Session):
         self.id = random.randint(0, 999999)
-        self.user = user
+        self.user_id = user_id
         self.db = db
 
     def get_access_token(self, exchange_name: str) -> Union[str, None]:
         """Gets the access token associated with this user and exchange"""
 
-        token = (self.db.execute(select(Exchange_Auth_Token).where((Exchange_Auth_Token.user_id == self.user.id) & (Exchange_Auth_Token.exchange_name == exchange_name)))).scalars().first()
+        token = (self.db.execute(select(Exchange_Auth_Token).where((Exchange_Auth_Token.user_id == self.user_id) & (Exchange_Auth_Token.exchange_name == exchange_name)))).scalars().first()
 
         #does this user have a token?
         if token is None:
-            logger.info(f"User {self.user.id} does not have a {exchange_name} access token")
+            logger.info(f"User {self.user_id} does not have a {exchange_name} access token")
             return None
 
         #is this token still valid?
         if token.is_expired():
-            logger.info(f"User {self.user.id} has an expired token {token.id} for exchange {exchange_name}")
+            logger.info(f"User {self.user_id} has an expired token {token.id} for exchange {exchange_name}")
             #refresh the token
             return self.__refresh_tokens(old_token=token)
         
@@ -66,16 +66,16 @@ class TokenService:
         try:
 
             #check if we still need to update the token or if another process did it while we were waiting for the lock
-            check_token = (self.db.execute(select(Exchange_Auth_Token).where((Exchange_Auth_Token.user_id == self.user.id) & (Exchange_Auth_Token.exchange_name == old_token.exchange_name)))).scalars().first()
+            check_token = (self.db.execute(select(Exchange_Auth_Token).where((Exchange_Auth_Token.user_id == self.user_id) & (Exchange_Auth_Token.exchange_name == old_token.exchange_name)))).scalars().first()
 
             #is the token there?
             if check_token is None:
-                logger.info(f"User {self.user.id} does not have a {old_token.exchange_name} access token to refresh")
+                logger.info(f"User {self.user_id} does not have a {old_token.exchange_name} access token to refresh")
                 return None
 
             #does this token still need to be refreshed?
             if check_token.is_expired():
-                logger.info(f"User {self.user.id} still has an expired token {check_token.id} for exchange {old_token.exchange_name}")
+                logger.info(f"User {self.user_id} still has an expired token {check_token.id} for exchange {old_token.exchange_name}")
 
                 #if this is the third attempt at a refresh, delete the token and require the user to re authenticate
                 if check_token.refresh_attempts >= 3:
@@ -126,7 +126,7 @@ class TokenService:
 
         except Exception as e:
             logger.debug(f"{self.id} released lock {lock_id}")
-            logger.error(f"Error while refreshing token {old_token.id} for user {self.user.id}: {e}")
+            logger.error(f"Error while refreshing token {old_token.id} for user {self.user_id}: {e}")
             self.db.rollback()
         return None
 
@@ -136,7 +136,7 @@ class TokenService:
 
 
         if code is None:
-            logger.error(f"No code provided, can't get tokens for {self.user.id}")
+            logger.error(f"No code provided, can't get tokens for {self.user_id}")
             return False
 
 
@@ -159,7 +159,7 @@ class TokenService:
                         code=code)
                     
                     new_exchange_token = Exchange_Auth_Token(
-                        user_id = self.user.id,
+                        user_id = self.user_id,
                         exchange_name = exchange_name,
                         access_token = TokenService.__encrypt(coinbase_tokens["access_token"]),
                         refresh_token = TokenService.__encrypt(coinbase_tokens["refresh_token"]),
@@ -173,7 +173,7 @@ class TokenService:
                     
 
                 except Exception as e:
-                    logger.error(f"Error while getting new tokens for user {self.user.id}: {e}")
+                    logger.error(f"Error while getting new tokens for user {self.user_id}: {e}")
                     self.db.rollback()
                 
         return False
