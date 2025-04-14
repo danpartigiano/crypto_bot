@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 from multiprocessing import Process
 import logging
 import json
@@ -136,12 +135,3 @@ def shutdown_all_bots():
             process.terminate()
             process.join()
             logger.info(f"{process.name} has been shutdown")
-=======
-
-
-while True:
-
-    #start each bot's producer and consumer
-
-    pass
->>>>>>> 2765220f8a03404288504576c63c188b6a0262fa
