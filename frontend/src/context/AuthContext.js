@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 
@@ -26,6 +28,23 @@ export const AuthProvider = ({ children }) => {
     checkAuthStatus();
   }, []);
 
+  // Refresh token periodically (every 10 min)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetch("http://localhost:8000/user/refresh-token", {
+        method: "GET",
+        credentials: "include",
+      }).then((res) => {
+        if (!res.ok) {
+          console.warn("Token refresh failed");
+          setIsAuthenticated(false);
+        }
+      });
+    }, 10 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Logout function to clear cookies and update state
   const logout = async () => {
     try {
@@ -45,4 +64,3 @@ export const AuthProvider = ({ children }) => {
 
 // Custom hook to use Auth Context
 export const useAuth = () => useContext(AuthContext);
-

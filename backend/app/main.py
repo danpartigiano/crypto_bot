@@ -36,6 +36,13 @@ def startup():
 
 
 
+    #Bot logic
+
+    #add each bot to the db
+
+    #spawn each bot as thier own process
+
+
 def shutdown():
     '''Tasks to be done on shutdown'''
 
