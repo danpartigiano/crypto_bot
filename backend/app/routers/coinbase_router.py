@@ -232,6 +232,8 @@ def coinbase_account(request: Request, db: Session = Depends(get_session)):
 
     #establish client
     coinbase_client = OAuthClient(access_token=coinbase_access_token, refresh_token="Our App Handles Refreshing")
+
+    
     
     return coinbase_client.get_accounts()
 
