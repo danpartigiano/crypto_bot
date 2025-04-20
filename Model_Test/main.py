@@ -7,7 +7,7 @@ import math
 
 
 MIN_PRICE_CHANGE_24_HRS = .1
-TARGET_PERCENTAGE_PROFIT = .06
+TARGET_PERCENTAGE_PROFIT = .5
 
 
 def main():
