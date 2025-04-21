@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from app.utility.environment import environment
 from app.utility.TokenService import TokenService
+import requests
 import http.client
 import json
 import logging
@@ -144,5 +145,29 @@ def get_user_portfolios(user: User, db: Session) -> Union[dict, None]:
     except Exception as e:
         logger.error(f"{e}")
         return None
+    
+def get_coinbase_balance(access_token: str, db: Session):
+    
+    
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "CB-VERSION": "2021-10-01"
+    }
+
+    response = requests.get("https://api.coinbase.com/v2/accounts", headers=headers)
+
+    if response.status_code != 200:
+        return {"error": f"Coinbase API failed: {response.status_code}"}
+
+    balances = {}
+    for account in response.json().get("data", []):
+        portfolio_id = account["portfolio_id"]
+
+        if portfolio_id not in balances.keys():
+            balances.update({portfolio_id: {}})
+
+        balances[portfolio_id].update({account["balance"]["currency"]: account["balance"]["amount"]})
+
+    return balances
 
     

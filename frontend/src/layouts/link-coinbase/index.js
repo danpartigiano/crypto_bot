@@ -37,11 +37,11 @@ function LinkCoinbase() {
   const handleLinkCoinbase = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/coinbase/oauth-redirect-url", {
+      const response = await fetch("http://localhost:8000/coin/oauth-redirect-url", {
         method: "GET",
         credentials: "include",
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
         },
       });
 

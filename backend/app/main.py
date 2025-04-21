@@ -32,7 +32,7 @@ def startup():
         Base.metadata.drop_all(bind=engine)  #Only for development purposes
     Base.metadata.create_all(bind=engine)
 
-    botManager.startup_all_bots()
+    # botManager.startup_all_bots()
 
 
 
@@ -46,7 +46,7 @@ def startup():
 def shutdown():
     '''Tasks to be done on shutdown'''
 
-    botManager.shutdown_all_bots()
+    # botManager.shutdown_all_bots()
 
     engine.dispose()
 

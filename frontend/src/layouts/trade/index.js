@@ -15,14 +15,17 @@ import Footer from "examples/Footer";
 import MasterCard from "examples/Cards/MasterCard";
 import DefaultInfoCard from "examples/Cards/InfoCards/DefaultInfoCard";
 
+import useBalanceWebSocket from "context/balanceWebSocket";
+
 function Trade() {
   const { isAuthenticated } = useAuth();
   const [isCoinbaseLinked, setIsCoinbaseLinked] = useState(null);
+  const balance = useBalanceWebSocket();
 
   useEffect(() => {
     const checkCoinbaseLink = async () => {
       try {
-        const res = await fetch("http://localhost:8000/coinbase/linked", {
+        const res = await fetch("http://localhost:8000/coin/linked", {
           method: "GET",
           credentials: "include",
           headers: {
@@ -50,8 +53,19 @@ function Trade() {
   return (
     <DashboardLayout>
       <DashboardNavbar absolute isMini />
+      <MDBox py={3}>
+        <Grid container spacing={3}>
+          <Grid item xs={12} sm={6} lg={4}>
+            <MasterCard
+              title="Coinbase Balance"
+              value={balance !== null ? `$${balance}` : "Loading..."}
+            />
+          </Grid>
+        </Grid>
+      </MDBox>
       <Footer />
     </DashboardLayout>
   );
 }
+
 export default Trade;

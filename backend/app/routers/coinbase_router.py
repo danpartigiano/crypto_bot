@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Request, Depends
+from fastapi import APIRouter, HTTPException, status, Request, Depends, WebSocket, WebSocketDisconnect
 from app.utility import user_helper, coinbase_helper
 from sqlalchemy.orm import Session
 from app.database.db_connection import get_session
@@ -7,6 +7,7 @@ from app.utility.environment import environment
 from authlib.integrations.requests_client import OAuth2Session
 from coinbase.wallet.client import OAuthClient
 from app.utility.TokenService import TokenService
+import asyncio
 import logging
 
 
@@ -269,5 +270,47 @@ def coinbase_account(request: Request, db: Session = Depends(get_session)):
 
 
 
+@router.websocket("/ws/balance")
+async def websocket_balance_endpoint(websocket: WebSocket, db: Session = Depends(get_session)):
+    await websocket.accept()
+    logger.info("WebSocket connected")
 
+    try:
+        # Extract token from cookies
+        token = websocket.cookies.get("access_token")
+        logger.debug(f"Token from query params: {token}")
+
+        if not token:
+            await websocket.send_json({"error": "unauthorized: no token found"})
+            await websocket.close(code=1008)
+            return
+
+        # Authenticate user using the token
+        user = user_helper.get_current_user(token, db)
+        if not user:
+            await websocket.send_json({"error": "unauthorized: invalid token"})
+            await websocket.close(code=1008)
+            return
+        
+        token_service = TokenService(user_id=user.id, db=db)
+
+        while True:
+            coinbase_access_token = token_service.get_access_token(exchange_name="coinbase")
+            # Get the user's balance
+            balance = coinbase_helper.get_coinbase_balance(coinbase_access_token, db)
+            print(balance)
+            if isinstance(balance, dict) and 'error' in balance:
+                await websocket.send_json({"error": balance['error']})
+            else:
+                await websocket.send_json({"balance": balance})
+            await asyncio.sleep(5)
+
+    except WebSocketDisconnect:
+        logger.info("WebSocket client disconnected")
+    except Exception as e:
+        logger.exception("Unexpected error in WebSocket")
+        await websocket.close(code=1011)
+    finally:
+        db.close()
+        return
 
