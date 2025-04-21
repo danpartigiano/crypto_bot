@@ -8,9 +8,13 @@ from sqlalchemy.orm import Session
 from app.utility.environment import environment
 import logging
 
+import requests
+from datetime import datetime, timezone
+from app.database.models import Exchange_Auth_Token
 
 
 logger = logging.getLogger()
+
 
 @staticmethod
 def get_state_by_state(state: str, db: Session) -> Union[OAuth_State, None]:
