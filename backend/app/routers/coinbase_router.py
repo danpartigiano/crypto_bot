@@ -7,11 +7,12 @@ from app.utility.environment import environment
 from authlib.integrations.requests_client import OAuth2Session
 from coinbase.wallet.client import OAuthClient
 from app.utility.TokenService import TokenService
+import logging
 
 
 
 router = APIRouter(
-    prefix="/coinbase",
+    prefix="/coin",
     tags=["Coinbase"]
 )
 
@@ -22,6 +23,8 @@ oauth_session_coinbase = OAuth2Session(
     redirect_uri=environment.COINBASE_REDIRECT_URI,
     scope=environment.COINBASE_CLIENT_TOKEN_SCOPE,
     )
+
+logger = logging.getLogger()
 
 
 
@@ -193,6 +196,8 @@ def coinbase_account(request: Request, db: Session = Depends(get_session)):
 
     coinbase_access_token = token_service.get_access_token(exchange_name="coinbase")
 
+    print(coinbase_access_token)
+
     if coinbase_access_token is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -236,5 +241,33 @@ def coinbase_account(request: Request, db: Session = Depends(get_session)):
     
     
     return coinbase_client.get_accounts()
+
+@router.get("/portfolios", summary="Get current user's coinbase portfolios")
+def coinbase_account(request: Request, db: Session = Depends(get_session)):
+    
+    token = request.cookies.get("access_token")
+
+    #verify the current user
+    user_data = user_helper.get_current_user(token, db)
+
+    if user_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired Token"
+        )
+    
+    portfolios = coinbase_helper.get_user_portfolios(user=user_data, db=db)
+
+    if portfolios is None:
+        logger.error(f"Unable to get portfolios for {user_data.id}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error loading portfolios"
+        )
+
+    return portfolios
+
+
+
 
 

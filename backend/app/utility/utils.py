@@ -4,7 +4,6 @@ from typing import Union
 from datetime import datetime, timezone, timedelta
 from app.utility.environment import environment
 from jose import jwt
-from jwt.exceptions import JWTException
 
 def get_password_hash(password: str) -> str:
     '''Generates the hash of the given password'''
@@ -40,5 +39,5 @@ def decrypt_access_token(token: str) -> Union[str, None]:
         if username is None:
             return None
         return username
-    except JWTException:
+    except Exception:
         return None

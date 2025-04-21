@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:latest
+    image: postgres:15.2
     container_name: postgres_db
     environment:
       POSTGRES_USER: admin
@@ -12,7 +12,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   redis:
-    image: redis:latest
+    image: redis:7.4
     container_name: redis
     restart: always
     ports:

@@ -6,7 +6,8 @@ from contextlib import contextmanager
 
 DATABASE_URL = environment.POSTGRESQL_CONNECTION_STRING
 
-engine = create_engine(DATABASE_URL, echo=(not environment.PRODUCTION))
+engine = create_engine(DATABASE_URL, echo=False)
+
 
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

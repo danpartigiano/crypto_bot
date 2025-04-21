@@ -1,4 +1,6 @@
 {
     "name": "BitcoinBot1",
-    "description": "I trade bitcoin for you"
+    "description": "I trade bitcoin for you",
+    "asset_types": ["USD", "BTC"]
+
 }

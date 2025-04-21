@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from app.database.db_connection import Base
 from datetime import datetime, timezone
 from hashlib import blake2b
+from sqlalchemy.dialects.postgresql import ARRAY
 
 class User(Base):
     '''Relation for the users of our platform'''
@@ -71,7 +72,6 @@ class Exchange_Auth_Token(Base):
         return int.from_bytes(hash_gen.digest(), byteorder="big", signed=False)
 
 
-
 class Bot(Base):
     '''Relation to hold bot information'''
     __tablename__ = "bots"
@@ -79,6 +79,7 @@ class Bot(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String, unique=True, nullable=False, index=True)
     description = Column(String, default="")
+    asset_types = Column(ARRAY(String), nullable=False)
 
     subscriptions = relationship("Subscription", back_populates="bot")
 
@@ -90,6 +91,7 @@ class Subscription(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     bot_id = Column(Integer, ForeignKey("bots.id"), index=True)
+    portfolio_uuid = Column(String, unique=True, index=True)
 
     
     user = relationship("User", back_populates="subscriptions")

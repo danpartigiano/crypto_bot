@@ -13,3 +13,8 @@ class CoinbaseToken(BaseModel):
     access_token: str
     refresh_token: str
     user_id: int
+
+
+class Subscription(BaseModel):
+    bot_id: int
+    portfolio_uuid: str

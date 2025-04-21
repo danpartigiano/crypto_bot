@@ -6,6 +6,9 @@ from sqlalchemy.future import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from app.utility.environment import environment
+from app.utility.TokenService import TokenService
+import http.client
+import json
 import logging
 
 
@@ -95,4 +98,51 @@ def get_callback_status_page(error_message: HTTPException | None):
         """
 
     return webpage
-            
+
+@staticmethod
+def get_user_portfolios(user: User, db: Session) -> Union[dict, None]:
+
+    if user is None:
+        return None
+    
+    token_service = TokenService(user_id=user.id, db=db)
+
+    coinbase_access_token = token_service.get_access_token(exchange_name="coinbase")
+
+    if coinbase_access_token is None:
+        return None
+
+
+    try:
+        #get all portfolios
+        conn = http.client.HTTPSConnection("api.coinbase.com")
+        payload = ''
+        headers = {
+            "Authorization": f"Bearer {coinbase_access_token}",
+            "Content-Type": "application/json"
+        }
+        conn.request("GET", "/api/v3/brokerage/portfolios", payload, headers)
+        res = conn.getresponse().read().decode("utf-8")
+        data = json.loads(res)
+
+
+        #get the balances for each active portfolio
+        all_portfolio_data = dict()
+        all_portfolio_data.update({"portfolios": []})
+
+
+        for portfolio in data["portfolios"]:
+            if portfolio["deleted"] == False:
+                portfolio_uuid = portfolio["uuid"]
+                conn.request("GET", f"/api/v3/brokerage/portfolios/{portfolio_uuid}", payload, headers)
+                res = conn.getresponse().read().decode("utf-8")
+                data = json.loads(res)
+                all_portfolio_data["portfolios"].append(data["breakdown"])
+
+        return all_portfolio_data
+
+    except Exception as e:
+        logger.error(f"{e}")
+        return None
+
+    

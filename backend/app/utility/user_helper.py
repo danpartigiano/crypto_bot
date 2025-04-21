@@ -38,6 +38,7 @@ def add_user_to_db(user: UserSchema, db: Session) -> Union[User, None]:
     try:
         db.add(new_user)
         db.commit()
+        db.refresh(new_user)
         return new_user
     
     except SQLAlchemyError as e:

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Request, Depends, Form
 from fastapi.responses import JSONResponse
 from app.database.schemas import UserSchema
-from app.utility import user_helper
+from app.utility import user_helper, bot_helper
 from app.utility.utils import create_access_token
 from sqlalchemy.orm import Session
 from app.database.db_connection import get_session
@@ -92,6 +92,7 @@ def user_info(request: Request, db: Session = Depends(get_session)):
 @router.get('/refresh-token', summary="Refresh a current access token")
 def refresh_token(request: Request, db: Session = Depends(get_session)):
 
+
     access_token = request.cookies.get("access_token")
 
     user = user_helper.get_current_user(access_token, db)
@@ -109,3 +110,23 @@ def refresh_token(request: Request, db: Session = Depends(get_session)):
     response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False)
 
     return response
+
+
+@router.get("/subscriptions", summary="Get this user's subscriptions")
+def bots(request: Request, db: Session = Depends(get_session)):
+
+    #get token from request
+    access_token = request.cookies.get("access_token")
+
+    user = user_helper.get_current_user(access_token, db)
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid access token"
+        )
+
+
+
+
+    return  bot_helper.get_subscriptions_for_user(user=user, db=db)

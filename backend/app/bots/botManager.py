@@ -30,7 +30,7 @@ def load_bot_info(bot_path):
         with open(file, "r") as file:
             bot_data = json.load(file)
             #ensure bot info 
-            expected_info = {"name", "description"}
+            expected_info = {"name", "description", "asset_types"}
             if all(key in bot_data for key in expected_info):
                 return bot_data
             else:
@@ -78,7 +78,7 @@ def startup_all_bots():
         signal_generator = import_module(f"app.bots.{bot_name}.signalGenerator").main
         signal_processor = import_module(f"app.bots.{bot_name}.signalProcessor").main
 
-        #TODO load bot info into db if need be, otherwise get id from db
+        #load bot info into db if need be, otherwise get id from db
         bot_id = load_bot_into_db(bot_info)
 
         if bot_id is None:
@@ -109,7 +109,8 @@ def load_bot_into_db(bot_info: dict):
                 #new bot, add it to the db
                 new_bot = Bot(
                     name=bot_info["name"],
-                    description=bot_info["description"]
+                    description=bot_info["description"],
+                    asset_types=bot_info["asset_types"]
                 )
                 db.add(new_bot)
                 db.commit()
