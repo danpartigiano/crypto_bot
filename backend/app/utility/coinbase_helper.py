@@ -99,4 +99,71 @@ def get_callback_status_page(error_message: HTTPException | None):
         """
 
     return webpage
-            
+
+def refresh_coinbase_token(token_obj: Exchange_Auth_Token, db: Session) -> bool:
+    try:
+        refresh_token = token_obj.refresh_token.decode()
+        client_id = environment.get("COINBASE_CLIENT_ID")
+        client_secret = environment.get("COINBASE_CLIENT_SECRET")
+
+        payload = {
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token,
+            "client_id": client_id,
+            "client_secret": client_secret,
+        }
+
+        response = requests.post("https://api.coinbase.com/oauth/token", data=payload)
+
+        if response.status_code != 200:
+            logger.error(f"Token refresh failed: {response.text}")
+            token_obj.refresh_attempts += 1
+            db.commit()
+            return False
+
+        tokens = response.json()
+
+        token_obj.access_token = tokens["access_token"].encode()
+        token_obj.refresh_token = tokens["refresh_token"].encode()
+        token_obj.expires_at = int(datetime.now(timezone.utc).timestamp()) + tokens["expires_in"]
+        token_obj.refresh_attempts = 0
+        db.commit()
+
+        return True
+
+    except Exception as e:
+        logger.exception("Exception during token refresh")
+        db.rollback()
+        return False
+
+def get_coinbase_balance(user: User, db: Session):
+    token_obj = user.exchange_tokens
+    
+    if not token_obj:
+        return {"error": "No Coinbase token found"}
+
+    if token_obj.is_expired():
+        refreshed = refresh_coinbase_token(token_obj, db)
+        if not refreshed:
+            return {"error": "Token refresh failed"}
+    
+    access_token = token_obj.access_token.decode()
+    
+    
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "CB-VERSION": "2021-10-01"
+    }
+
+    response = requests.get("https://api.coinbase.com/v2/accounts", headers=headers)
+
+    if response.status_code != 200:
+        return {"error": f"Coinbase API failed: {response.status_code}"}
+
+    balances = {}
+    for account in response.json().get("data", []):
+        balances[account["currency"]] = account["balance"]["amount"]
+
+    return balances
+
+
