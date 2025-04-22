@@ -52,7 +52,7 @@ function ProfileInfoCard({ title, description, info, social, action, shadow }) {
   });
 
   // Push the object values into the values array
-  Object.values(info).forEach((el) => values.push(el));
+  Object.values(info).forEach((el) => values.push(el !== null && el !== undefined ? String(el) : "N/A"));
 
   // Render the card info items
   const renderItems = labels.map((label, key) => (

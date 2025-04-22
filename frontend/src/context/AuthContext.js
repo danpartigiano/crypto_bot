@@ -9,6 +9,7 @@ const AuthContext = createContext();
 // Auth Provider Component
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
 
   // Check if user is authenticated on app load
   useEffect(() => {
@@ -19,9 +20,11 @@ export const AuthProvider = ({ children }) => {
         });
         if (response.status === 200) {
           setIsAuthenticated(true);
+          setUser(response.data);
         }
       } catch (error) {
         setIsAuthenticated(false);
+        setUser(null);
       }
     };
 
@@ -56,7 +59,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, setIsAuthenticated, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, logout }}>
       {children}
     </AuthContext.Provider>
   );

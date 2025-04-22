@@ -4,23 +4,24 @@ import { useEffect, useState } from "react";
 
 // @mui material components
 import Grid from "@mui/material/Grid";
+import Card from "@mui/material/Card";
 
 // Material Dashboard 2 React components
 import MDBox from "components/MDBox";
+import MDTypography from "components/MDTypography";
 
 // Material Dashboard 2 React examples
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import DashboardNavbar from "examples/Navbars/DashboardNavbar";
 import Footer from "examples/Footer";
-import MasterCard from "examples/Cards/MasterCard";
-import DefaultInfoCard from "examples/Cards/InfoCards/DefaultInfoCard";
-
-import useBalanceWebSocket from "context/balanceWebSocket";
 
 function Trade() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [isCoinbaseLinked, setIsCoinbaseLinked] = useState(null);
-  const balance = useBalanceWebSocket();
+  const [balance, setBalance] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+
+  const userId = user?.id;
 
   useEffect(() => {
     const checkCoinbaseLink = async () => {
@@ -46,9 +47,50 @@ function Trade() {
     }
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    if (!userId) return;
+
+    const socket = new WebSocket("ws://localhost:8000/coin/ws/balance");
+
+    socket.onopen = () => {
+      console.log("WebSocket connected");
+      socket.send(JSON.stringify({ userId }));
+    };
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log("WebSocket received:", data);
+      setBalance((prev) => ({
+        ...prev,
+        [userId]: data,
+      }));
+    };
+
+    socket.onerror = (err) => {
+      console.error("WebSocket error:", err);
+    };
+
+    socket.onclose = () => {
+      console.log("WebSocket closed");
+    };
+
+    return () => {
+      socket.close();
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    if (userId && balance?.[userId] !== undefined) {
+      setIsLoading(false);
+    }
+  }, [userId, balance]);
+
+  if (!user) return <div>Loading user...</div>;
   if (!isAuthenticated) return <Navigate to="/authentication/sign-in" />;
   if (isCoinbaseLinked === false) return <Navigate to="/link-coinbase" />;
-  if (isCoinbaseLinked === null) return <div>Loading...</div>;
+  if (isLoading) return <div>Loading balance...</div>;
+
+  const usdBalance = balance?.[userId]?.USD || "0.00";
 
   return (
     <DashboardLayout>
@@ -56,10 +98,14 @@ function Trade() {
       <MDBox py={3}>
         <Grid container spacing={3}>
           <Grid item xs={12} sm={6} lg={4}>
-            <MasterCard
-              title="Coinbase Balance"
-              value={balance !== null ? `$${balance}` : "Loading..."}
-            />
+            <Card sx={{ backgroundColor: "#1a1a1a", p: 3, marginTop: "30px" }}>
+              <MDTypography variant="h5" color="white" gutterBottom>
+                Coinbase Balance
+              </MDTypography>
+              <MDBox mb={2} mt={5}>
+                <strong>Balance:</strong> ${parseFloat(usdBalance).toFixed(2)}
+              </MDBox>
+            </Card>
           </Grid>
         </Grid>
       </MDBox>

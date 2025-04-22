@@ -30,9 +30,11 @@ import DashboardNavbar from "examples/Navbars/DashboardNavbar";
 import Footer from "examples/Footer";
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function LinkCoinbase() {
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleLinkCoinbase = async () => {
     setLoading(true);
@@ -48,6 +50,7 @@ function LinkCoinbase() {
       const data = await response.json();
       if (data.coinbase_url) {
         window.open(data.coinbase_url, "_blank", "width=600,height=600");
+        navigate("/trade");
       } else {
         console.error("No Coinbase URL returned.");
       }
