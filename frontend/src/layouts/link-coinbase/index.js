@@ -48,9 +48,29 @@ function LinkCoinbase() {
       });
 
       const data = await response.json();
-      if (data.coinbase_url) {
-        window.open(data.coinbase_url, "_blank", "width=600,height=600");
-        navigate("/trade");
+    if (data.coinbase_url) {
+      const popup = window.open(data.coinbase_url, "_blank", "width=600,height=600");
+
+      const pollInterval = setInterval(async () => {
+        try {
+          const res = await fetch("http://localhost:8000/coin/linked", {
+            method: "GET",
+            credentials: "include",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            },
+          });
+          const linkStatus = await res.json();
+          if (linkStatus.linked) {
+            clearInterval(pollInterval);
+            popup?.close();
+            navigate("/trade");
+          }
+        } catch (err) {
+          console.error("Polling failed:", err);
+        }
+      }, 2000);
+
       } else {
         console.error("No Coinbase URL returned.");
       }

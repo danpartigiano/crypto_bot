@@ -87,7 +87,10 @@ function Trade() {
 
   if (!user) return <div>Loading user...</div>;
   if (!isAuthenticated) return <Navigate to="/authentication/sign-in" />;
+  if (isCoinbaseLinked === null) return <div>Checking Coinbase link...</div>;
+
   if (isCoinbaseLinked === false) return <Navigate to="/link-coinbase" />;
+
   if (isLoading) return <div>Loading balance...</div>;
 
   const usdBalance = balance?.[userId]?.USD || "0.00";
