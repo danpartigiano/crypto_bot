@@ -68,7 +68,6 @@ function Trade() {
         const data = JSON.parse(event.data);
         if (data && typeof data === "object") {
           setBalance((prev) => ({ ...prev, [userId]: data }));
-          //setBalance((prev) => ({ ...prev, [userId]: { USD: 10000 } }));
         }
       } catch (e) {
         console.error("Invalid WebSocket message format:", e);
@@ -116,26 +115,6 @@ function Trade() {
         setBots(Array.isArray(botsData) ? botsData : []);
         setSubscribedBots(Array.isArray(subsData) ? subsData : []);
         setPortfolios(Array.isArray(portfoliosData?.portfolios) ? portfoliosData.portfolios : []);
-
-        console.log("Fetched portfolios:", portfoliosData);
-        console.log(
-          "Is portfoliosData.portfolios an array?",
-          Array.isArray(portfoliosData?.portfolios)
-        );
-
-        if (Array.isArray(portfoliosData?.portfolios)) {
-          portfoliosData.portfolios.forEach((p, i) => {
-            console.log(`Portfolio ${i}:`, p);
-            console.log(`  UUID: ${p.portfolio?.uuid}`);
-            console.log(`  Name: ${p.portfolio?.name}`);
-            console.log(`  Full object:`, p);
-          });
-        } else {
-          console.warn(
-            "portfoliosData.portfolios is not an array or is undefined:",
-            portfoliosData?.portfolios
-          );
-        }
       } catch (error) {
         console.error("Error loading bots/subscriptions/portfolios", error);
       }
@@ -153,7 +132,7 @@ function Trade() {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          bot_id: selectedBot,
+          bot_id: Number(selectedBot),
           portfolio_uuid: selectedPortfolio,
         }),
       });
@@ -264,7 +243,7 @@ function Trade() {
                       <MenuItem disabled>No bots available</MenuItem>
                     ) : (
                       bots.map((bot) => (
-                        <MenuItem key={bot.id} value={bot.id}>
+                        <MenuItem key={bot.id.toString()} value={bot.id.toString()}>
                           {bot.name}
                         </MenuItem>
                       ))
