@@ -5,6 +5,12 @@ import { useEffect, useState } from "react";
 // @mui material components
 import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
+import Button from "@mui/material/Button";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+import InputLabel from "@mui/material/InputLabel";
+import FormControl from "@mui/material/FormControl";
+import CircularProgress from "@mui/material/CircularProgress";
 
 // Material Dashboard 2 React components
 import MDBox from "components/MDBox";
@@ -21,30 +27,31 @@ function Trade() {
   const [balance, setBalance] = useState({});
   const [isLoading, setIsLoading] = useState(true);
 
+  const [bots, setBots] = useState([]);
+  const [subscribedBots, setSubscribedBots] = useState([]);
+  const [portfolios, setPortfolios] = useState([]);
+  const [selectedPortfolio, setSelectedPortfolio] = useState("");
+  const [selectedBot, setSelectedBot] = useState("");
+
   const userId = user?.id;
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     const checkCoinbaseLink = async () => {
       try {
         const res = await fetch("http://localhost:8000/coin/linked", {
-          method: "GET",
           credentials: "include",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
         });
-
         const data = await res.json();
-        setIsCoinbaseLinked(data.linked);
+        setIsCoinbaseLinked(data?.linked ?? false);
       } catch (err) {
         console.error("Failed to check Coinbase link:", err);
         setIsCoinbaseLinked(false);
       }
     };
 
-    if (isAuthenticated) {
-      checkCoinbaseLink();
-    }
+    checkCoinbaseLink();
   }, [isAuthenticated]);
 
   useEffect(() => {
@@ -53,47 +60,131 @@ function Trade() {
     const socket = new WebSocket("ws://localhost:8000/coin/ws/balance");
 
     socket.onopen = () => {
-      console.log("WebSocket connected");
       socket.send(JSON.stringify({ userId }));
     };
 
     socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      console.log("WebSocket received:", data);
-      setBalance((prev) => ({
-        ...prev,
-        [userId]: data,
-      }));
+      try {
+        const data = JSON.parse(event.data);
+        if (data && typeof data === "object") {
+          setBalance((prev) => ({ ...prev, [userId]: data }));
+          //setBalance((prev) => ({ ...prev, [userId]: { USD: 10000 } }));
+        }
+      } catch (e) {
+        console.error("Invalid WebSocket message format:", e);
+      }
     };
 
-    socket.onerror = (err) => {
-      console.error("WebSocket error:", err);
-    };
+    socket.onerror = (err) => console.error("WebSocket error:", err);
+    socket.onclose = () => console.log("WebSocket closed");
 
-    socket.onclose = () => {
-      console.log("WebSocket closed");
-    };
-
-    return () => {
-      socket.close();
-    };
-  }, [userId]);
+    return () => socket.close();
+  }, [userId, balance]);
 
   useEffect(() => {
-    if (userId && balance?.[userId] !== undefined) {
+    if (userId && balance[userId]) {
       setIsLoading(false);
     }
   }, [userId, balance]);
 
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const fetchData = async () => {
+      try {
+        const options = {
+          credentials: "include",
+          headers: { Accept: "application/json" },
+        };
+
+        const [botsRes, subsRes, portfoliosRes] = await Promise.all([
+          fetch("http://localhost:8000/bots", options),
+          fetch("http://localhost:8000/user/subscriptions", options),
+          fetch("http://localhost:8000/coin/portfolios", options),
+        ]);
+
+        if (!portfoliosRes.ok) {
+          throw new Error(`Error fetching portfolios: ${portfoliosRes.statusText}`);
+        }
+
+        const [botsData, subsData, portfoliosData] = await Promise.all([
+          botsRes.json(),
+          subsRes.json(),
+          portfoliosRes.json(),
+        ]);
+
+        setBots(Array.isArray(botsData) ? botsData : []);
+        setSubscribedBots(Array.isArray(subsData) ? subsData : []);
+        setPortfolios(Array.isArray(portfoliosData?.portfolios) ? portfoliosData.portfolios : []);
+
+        console.log("Fetched portfolios:", portfoliosData);
+        console.log(
+          "Is portfoliosData.portfolios an array?",
+          Array.isArray(portfoliosData?.portfolios)
+        );
+
+        if (Array.isArray(portfoliosData?.portfolios)) {
+          portfoliosData.portfolios.forEach((p, i) => {
+            console.log(`Portfolio ${i}:`, p);
+            console.log(`  UUID: ${p.portfolio?.uuid}`);
+            console.log(`  Name: ${p.portfolio?.name}`);
+            console.log(`  Full object:`, p);
+          });
+        } else {
+          console.warn(
+            "portfoliosData.portfolios is not an array or is undefined:",
+            portfoliosData?.portfolios
+          );
+        }
+      } catch (error) {
+        console.error("Error loading bots/subscriptions/portfolios", error);
+      }
+    };
+
+    fetchData();
+  }, [isAuthenticated]);
+
+  const handleSubscribe = async () => {
+    if (!selectedPortfolio || !selectedBot) return;
+
+    try {
+      const res = await fetch("http://localhost:8000/bots/subscribe", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bot_id: selectedBot,
+          portfolio_uuid: selectedPortfolio,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Backend error:", errorText);
+        throw new Error("Failed to subscribe: " + errorText);
+      }
+
+      alert("Subscribed successfully!");
+
+      const updated = await fetch("http://localhost:8000/user/subscriptions", {
+        credentials: "include",
+      });
+
+      const updatedData = await updated.json();
+      setSubscribedBots(Array.isArray(updatedData) ? updatedData : []);
+    } catch (err) {
+      console.error("Subscription failed", err);
+      alert("Failed to subscribe.");
+    }
+  };
+
   if (!user) return <div>Loading user...</div>;
   if (!isAuthenticated) return <Navigate to="/authentication/sign-in" />;
   if (isCoinbaseLinked === null) return <div>Checking Coinbase link...</div>;
-
   if (isCoinbaseLinked === false) return <Navigate to="/link-coinbase" />;
+  if (isLoading) return <CircularProgress sx={{ m: 5 }} />;
 
-  if (isLoading) return <div>Loading balance...</div>;
-
-  const usdBalance = balance?.[userId]?.USD || "0.00";
+  const usdBalance = parseFloat(balance[userId]?.USD || 0).toFixed(2);
 
   return (
     <DashboardLayout>
@@ -101,13 +192,90 @@ function Trade() {
       <MDBox py={3}>
         <Grid container spacing={3}>
           <Grid item xs={12} sm={6} lg={4}>
-            <Card sx={{ backgroundColor: "#1a1a1a", p: 3, marginTop: "30px" }}>
+            <Card sx={{ backgroundColor: "#1a1a1a", p: 3, mt: 3 }}>
               <MDTypography variant="h5" color="white" gutterBottom>
                 Coinbase Balance
               </MDTypography>
               <MDBox mb={2} mt={5}>
-                <strong>Balance:</strong> ${parseFloat(usdBalance).toFixed(2)}
+                <MDTypography color="white">
+                  <strong>Balance:</strong> ${usdBalance}
+                </MDTypography>
               </MDBox>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} lg={4}>
+            <Card sx={{ backgroundColor: "#1a1a1a", p: 3, mt: 3 }}>
+              <MDTypography variant="h5" color="white" gutterBottom>
+                Your Subscribed Bots
+              </MDTypography>
+              {subscribedBots.length === 0 ? (
+                <MDTypography color="white">No subscriptions yet.</MDTypography>
+              ) : (
+                subscribedBots.map((sub) => (
+                  <MDBox key={`${sub.bot_id}-${sub.portfolio_uuid}`} mt={1}>
+                    <MDTypography variant="body1" color="white">
+                      Bot ID: {sub.bot_id}, Portfolio: {sub.portfolio_uuid}
+                    </MDTypography>
+                  </MDBox>
+                ))
+              )}
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} lg={4}>
+            <Card sx={{ backgroundColor: "#1a1a1a", p: 3, mt: 3 }}>
+              <MDTypography variant="h5" color="white" gutterBottom>
+                Subscribe to a Bot
+              </MDTypography>
+
+              <MDBox mb={2}>
+                <FormControl fullWidth>
+                  <InputLabel sx={{ color: "white" }}>Select Portfolio</InputLabel>
+                  <Select
+                    value={selectedPortfolio || ""}
+                    onChange={(e) => setSelectedPortfolio(e.target.value)}
+                    disabled={portfolios.length === 0}
+                    sx={{ color: "white", borderColor: "white" }}
+                  >
+                    {portfolios.length === 0 ? (
+                      <MenuItem disabled>No portfolios available</MenuItem>
+                    ) : (
+                      portfolios.map((p, i) => (
+                        <MenuItem key={p.portfolio?.uuid || i} value={p.portfolio?.uuid}>
+                          {p.portfolio?.name || `Portfolio ${i + 1}`}
+                        </MenuItem>
+                      ))
+                    )}
+                  </Select>
+                </FormControl>
+              </MDBox>
+
+              <MDBox mb={2}>
+                <FormControl fullWidth>
+                  <InputLabel sx={{ color: "white" }}>Select Bot</InputLabel>
+                  <Select
+                    value={selectedBot || ""}
+                    onChange={(e) => setSelectedBot(e.target.value)}
+                    disabled={bots.length === 0}
+                    sx={{ color: "white", borderColor: "white" }}
+                  >
+                    {bots.length === 0 ? (
+                      <MenuItem disabled>No bots available</MenuItem>
+                    ) : (
+                      bots.map((bot) => (
+                        <MenuItem key={bot.id} value={bot.id}>
+                          {bot.name}
+                        </MenuItem>
+                      ))
+                    )}
+                  </Select>
+                </FormControl>
+              </MDBox>
+
+              <Button variant="contained" color="primary" onClick={handleSubscribe}>
+                Subscribe
+              </Button>
             </Card>
           </Grid>
         </Grid>
