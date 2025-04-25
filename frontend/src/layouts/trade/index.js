@@ -79,7 +79,7 @@ function Trade() {
         try {
           const data = JSON.parse(event.data);
           if (data && typeof data === "object") {
-            setBalance((prev) => ({ ...prev, [user.id]: data }));
+            setBalance(data);
           }
         } catch (e) {
           console.error("Invalid WebSocket message format:", e);
