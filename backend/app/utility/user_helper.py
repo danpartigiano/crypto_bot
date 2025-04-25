@@ -38,6 +38,7 @@ def add_user_to_db(user: UserSchema, db: Session) -> Union[User, None]:
     try:
         db.add(new_user)
         db.commit()
+        db.refresh(new_user)
         return new_user
     
     except SQLAlchemyError as e:
@@ -57,6 +58,13 @@ def get_user_by_email(email: str, db: Session) -> Union[User, None]:
     '''Gets the user from the database based on the provided email'''  
     
     result =  db.execute(select(User).where(User.email == email))
+    return result.scalars().first()
+
+@staticmethod   
+def get_user_by_id(user_id: str, db: Session) -> Union[User, None]:
+    '''Gets the user from the database based on the provided id'''  
+    
+    result =  db.execute(select(User).where(User.id == user_id))
     return result.scalars().first()
 
 @staticmethod

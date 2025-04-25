@@ -1,0 +1,5 @@
+{
+    "name": "EtheriumTradingBot",
+    "description": "ETH$$$",
+    "asset_types": ["USD", "ETH"]
+}

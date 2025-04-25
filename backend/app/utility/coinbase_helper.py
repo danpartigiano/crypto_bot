@@ -1,44 +1,36 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from app.database.models import OAuth_State, User
 from typing import Union
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
 from sqlalchemy.exc import SQLAlchemyError
-import secrets
 from sqlalchemy.orm import Session
-from cryptography.fernet import Fernet
 from app.utility.environment import environment
-from app.database.models import Exchange_Auth_Token
-from app.database.schemas import CoinbaseToken
-import json
+from app.utility.TokenService import TokenService
 import requests
-from requests import Response
+import http.client
+import json
 import logging
 
 
 
 logger = logging.getLogger()
 
-
 @staticmethod
-def generate_state() -> str:
-    return secrets.token_urlsafe(16) #TODO make sure this has a TTL in DB
-
-@staticmethod
-def get_oauth_from_state(state: str, db: Session) -> Union[OAuth_State, None]:
+def get_state_by_state(state: str, db: Session) -> Union[OAuth_State, None]:
     result = db.execute(select(OAuth_State).where(OAuth_State.state == state))
     return result.scalars().first()
 
 @staticmethod
-def get_state_by_username(username: str, db: Session) -> Union[OAuth_State, None]:
-    result = db.execute(select(OAuth_State).where(OAuth_State.username == username))
+def get_state_by_user_id(user_id: str, db: Session) -> Union[OAuth_State, None]:
+    result = db.execute(select(OAuth_State).where(OAuth_State.user_id == user_id))
     return result.scalars().first()
 
 @staticmethod
-def store_state_in_db(user: User, db: Session) -> Union[OAuth_State, None]:
+def store_state_in_db(user: User, state: str, db: Session) -> Union[OAuth_State, None]:
 
     #link the state to the current user in the database
-    new_oauth_state = OAuth_State(state=generate_state(), username=user.username)
+    new_oauth_state = OAuth_State(state=state, user_id=user.id)
 
     try:
         db.add(new_oauth_state)
@@ -46,54 +38,6 @@ def store_state_in_db(user: User, db: Session) -> Union[OAuth_State, None]:
         return new_oauth_state
 
     except SQLAlchemyError as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unable to store state"
-        )
-
-@staticmethod    
-def encrypt(data: str) -> bytes:
-    cipher_suite = Fernet(environment.COINBASE_TOKEN_ENCRYPTION_KEY)
-    return cipher_suite.encrypt(data.encode('utf-8'))
-
-@staticmethod
-def decrypt(data: bytes) -> str:
-    cipher_suite = Fernet(environment.COINBASE_TOKEN_ENCRYPTION_KEY)
-    return cipher_suite.decrypt(data).decode('utf-8')
-
-@staticmethod
-def store_new_tokens(response: Response, user: User, db: Session) -> Union[Exchange_Auth_Token, None]:
-
-    response_dict = json.loads(response.text)
-
-    
-    #encrypt the tokens
-    access_token = response_dict["access_token"]
-    refresh_token = response_dict["refresh_token"]
-    
-
-    encrypted_access_token = encrypt(access_token)
-    encrypted_refresh_token = encrypt(refresh_token)
-
-    #TODO validate that scopes match environment
-
-    new_exchange_token = Exchange_Auth_Token(
-        user_id = user.id,
-        exchange_name = "coinbase",
-        access_token = encrypted_access_token,
-        refresh_token = encrypted_refresh_token,
-        expires_in = response_dict["expires_in"],
-        scope = response_dict["scope"]
-
-    )
-    try:
-        db.add(new_exchange_token)
-        db.commit()
-        return new_exchange_token
-    
-    except SQLAlchemyError as e:
-        logger.error(f"DB error trying to add token for {user.username}")
         db.rollback()
         return None
 
@@ -105,68 +49,125 @@ def remove_state(state: OAuth_State, db: Session) -> Union[OAuth_State, None]:
         return state
     
     except SQLAlchemyError as e:
-        logger.error(f"Error deleting state for {state.username}")
+        logger.error(f"Error deleting state for {state.user_id}")
         db.rollback()
         return None
+    
+@staticmethod
+def clear_all_states_for_user(user: User, db: Session) -> bool:
+    try:
+        db.query(OAuth_State).filter(OAuth_State.user_id == user.id).delete(synchronize_session=False)
+        db.commit()
+        return True
+    
+    except SQLAlchemyError as e:
+        logger.error(f"Error deleting state for {user.username}")
+        db.rollback()
+        return False
+    
+@staticmethod
+def get_callback_status_page(error_message: HTTPException | None):
+    "Returns an html page used to show if the client's coinbase oauth exchange was successful"
+
+    circle_color = "green"
+    message = "Coinbase Account Linked to Crypto Bot!"
+    symbol = "&#x2714"
+
+    if error_message is not None:
+        #there was an error
+        circle_color = "red"
+        message = f"HTTP ERROR {error_message.status_code}: {error_message.detail}"
+        symbol = "&#10060"
+
+
+    webpage = f"""
+        <html>
+            <head><title>Coinbase OAuth Status</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px; background-color: black;">
+                <div style="margin-bottom: 20px;">
+                    <div style="background-color: {circle_color}; color: white; 
+                                width: 150px; height: 150px; 
+                                border-radius: 50%; display: flex; justify-content: center; align-items: center; 
+                                font-size: 100px; margin: 0 auto;">
+                        {symbol}
+                    </div>
+                </div>
+                <h2 style="color: white;">{message}</h2>
+                <br>
+            </body>
+        </html>
+        """
+
+    return webpage
 
 @staticmethod
-def get_coinbase_tokens(user: User, db: Session) -> Union[Exchange_Auth_Token, None]:
+def get_user_portfolios(user: User, db: Session) -> Union[dict, None]:
 
+    if user is None:
+        return None
     
-    result = (db.execute(select(Exchange_Auth_Token).where(Exchange_Auth_Token.user_id == user.id))).scalars().first()
+    token_service = TokenService(user_id=user.id, db=db)
 
-    #TODO check that the access token is still alive, if it is not then get a new one via refresh coinbase access token
+    coinbase_access_token = token_service.get_access_token(exchange_name="coinbase")
+
+    if coinbase_access_token is None:
+        return None
+
+
+    try:
+        #get all portfolios
+        conn = http.client.HTTPSConnection("api.coinbase.com")
+        payload = ''
+        headers = {
+            "Authorization": f"Bearer {coinbase_access_token}",
+            "Content-Type": "application/json"
+        }
+        conn.request("GET", "/api/v3/brokerage/portfolios", payload, headers)
+        res = conn.getresponse().read().decode("utf-8")
+        data = json.loads(res)
+
+
+        #get the balances for each active portfolio
+        all_portfolio_data = dict()
+        all_portfolio_data.update({"portfolios": []})
+
+
+        for portfolio in data["portfolios"]:
+            if portfolio["deleted"] == False:
+                portfolio_uuid = portfolio["uuid"]
+                conn.request("GET", f"/api/v3/brokerage/portfolios/{portfolio_uuid}", payload, headers)
+                res = conn.getresponse().read().decode("utf-8")
+                data = json.loads(res)
+                all_portfolio_data["portfolios"].append(data["breakdown"])
+
+        return all_portfolio_data
+
+    except Exception as e:
+        logger.error(f"{e}")
+        return None
     
-    return result
-
-@staticmethod
-def get_coinbase_user_info(token: Exchange_Auth_Token, db: Session):
-
-    access_token = decrypt((token.access_token))
-
-    url = "https://api.coinbase.com/v2/user"
-
+def get_coinbase_balance(access_token: str, db: Session):
+    
+    
     headers = {
-        "Authorization": f"Bearer {access_token}"
+        "Authorization": f"Bearer {access_token}",
+        "CB-VERSION": "2021-10-01"
     }
 
-    response = requests.get(url=url, headers=headers)
+    response = requests.get("https://api.coinbase.com/v2/accounts", headers=headers)
 
-    if response.status_code == 200:
-        return json.loads(response.text)
-    else:
-        return {}
+    if response.status_code != 200:
+        return {"error": f"Coinbase API failed: {response.status_code}"}
 
+    balances = {}
+    for account in response.json().get("data", []):
+        portfolio_id = account["portfolio_id"]
 
-@staticmethod
-def get_coinbase_user_accounts(token: Exchange_Auth_Token, db: Session):
+        if portfolio_id not in balances.keys():
+            balances.update({portfolio_id: {}})
 
-    access_token = decrypt((token.access_token))
+        balances[portfolio_id].update({account["balance"]["currency"]: account["balance"]["amount"]})
 
-    url = "https://api.coinbase.com/v2/accounts"
+    return balances
 
-    headers = {
-        "Authorization": f"Bearer {access_token}"
-    }
-
-    response = requests.get(url=url, headers=headers)
-
-    if response.status_code == 200:
-        return json.loads(response.text)
-    else:
-        return {}
-
-
-
-#TODO helper function to get a new access token for the current user
-@staticmethod
-def refresh_coinbase_access_token(auth: Exchange_Auth_Token, user: User):
-    #get a new access token curl https://login.coinbase.com/oauth2/token \
-    #   -X POST \
-    #   -d 'grant_type=refresh_token&
-    #       client_id=YOUR_CLIENT_ID&
-    #       client_secret=YOUR_CLIENT_SECRET&
-    #       refresh_token=REFRESH_TOKEN'
-    # refresh tokens expire after 1.5 years
-    # access tokens expire in one hour
-    pass
+    

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Request, Depends, Form
 from fastapi.responses import JSONResponse
 from app.database.schemas import UserSchema
-from app.utility import user_helper, coinbase_helper
+from app.utility import user_helper, bot_helper
 from app.utility.utils import create_access_token
 from sqlalchemy.orm import Session
 from app.database.db_connection import get_session
@@ -86,15 +86,12 @@ def user_info(request: Request, db: Session = Depends(get_session)):
         )
     
     user.hashed_password = None
-    #TODO replace password field with whether or not the user is linked to coinbase
-
 
     return user
 
 @router.get('/refresh-token', summary="Refresh a current access token")
 def refresh_token(request: Request, db: Session = Depends(get_session)):
 
-    
 
     access_token = request.cookies.get("access_token")
 
@@ -114,4 +111,22 @@ def refresh_token(request: Request, db: Session = Depends(get_session)):
 
     return response
 
-#TODO does the current user have an account linked to coinbase
+
+@router.get("/subscriptions", summary="Get this user's subscriptions")
+def bots(request: Request, db: Session = Depends(get_session)):
+
+    #get token from request
+    access_token = request.cookies.get("access_token")
+
+    user = user_helper.get_current_user(access_token, db)
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid access token"
+        )
+
+
+
+
+    return  bot_helper.get_subscriptions_for_user(user=user, db=db)

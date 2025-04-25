@@ -1,0 +1,5 @@
+{
+    "name": "copycat",
+    "description": "Copy on-chain swaps of top traders by placing orders on Coinbase.",
+    "asset_types": ["USD", "BTC"]
+}
