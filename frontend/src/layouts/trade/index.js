@@ -34,12 +34,11 @@ function Trade() {
   const [selectedPortfolio, setSelectedPortfolio] = useState("");
   const [selectedBot, setSelectedBot] = useState("");
 
-  const userId = user?.id;
   const socketRef = useRef(null);
 
   useEffect(() => {
     if (isCoinbaseLinked === true && isAuthenticated && user?.id) {
-      console.log("Coinbase linked and ready. Proceeding without reload.");
+      console.log("Coinbase linked and ready.");
     }
   }, [isCoinbaseLinked, isAuthenticated, user]);
 
@@ -48,9 +47,7 @@ function Trade() {
 
     const checkCoinbaseLink = async () => {
       try {
-        const res = await fetch("http://localhost:8000/coin/linked", {
-          credentials: "include",
-        });
+        const res = await fetch("http://localhost:8000/coin/linked", { credentials: "include" });
         const data = await res.json();
         setIsCoinbaseLinked(data?.linked ?? false);
       } catch (err) {
@@ -78,8 +75,8 @@ function Trade() {
       socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data && typeof data === "object") {
-            setBalance((prev) => ({ ...prev, [user.id]: data }));
+          if (data.balance && typeof data.balance === "object") {
+            setBalance(data.balance);
           }
         } catch (e) {
           console.error("Invalid WebSocket message format:", e);
@@ -95,9 +92,7 @@ function Trade() {
 
     const checkAccountsAndConnect = async () => {
       try {
-        const res = await fetch("http://localhost:8000/coin/accounts", {
-          credentials: "include",
-        });
+        const res = await fetch("http://localhost:8000/coin/accounts", { credentials: "include" });
         const data = await res.json();
 
         if (Array.isArray(data.data) && data.data.length > 0) {
@@ -116,39 +111,34 @@ function Trade() {
   }, [isAuthenticated, user]);
 
   useEffect(() => {
-    if (userId && balance[userId]) {
+    if (balance && Object.keys(balance).length > 0) {
       setIsLoading(false);
     }
+  }, [balance]);
 
-    const timeout = setTimeout(() => {
-      if (userId && !balance[userId]) {
-        console.warn("Timeout: forcing balance loading fallback");
-        setIsLoading(false);
-      }
-    }, 5000);
+  useEffect(() => {
+    if (!selectedPortfolio && balance && Object.keys(balance).length > 0) {
+      const firstPortfolio = Object.keys(balance)[0];
+      setSelectedPortfolio(firstPortfolio);
+    }
+  }, [balance, selectedPortfolio]);
 
-    return () => clearTimeout(timeout);
-  }, [userId, balance]);
+  useEffect(() => {
+    console.log("Selected Portfolio:", selectedPortfolio || "None");
+  }, [selectedPortfolio]);
 
   useEffect(() => {
     if (!isAuthenticated || isCoinbaseLinked !== true) return;
 
     const fetchData = async () => {
       try {
-        const options = {
-          credentials: "include",
-          headers: { Accept: "application/json" },
-        };
+        const options = { credentials: "include", headers: { Accept: "application/json" } };
 
         const [botsRes, subsRes, portfoliosRes] = await Promise.all([
           fetch("http://localhost:8000/bots", options),
           fetch("http://localhost:8000/user/subscriptions", options),
           fetch("http://localhost:8000/coin/portfolios", options),
         ]);
-
-        if (!portfoliosRes.ok) {
-          throw new Error(`Error fetching portfolios: ${portfoliosRes.statusText}`);
-        }
 
         const [botsData, subsData, portfoliosData] = await Promise.all([
           botsRes.json(),
@@ -189,10 +179,7 @@ function Trade() {
 
       alert("Subscribed successfully!");
 
-      const updated = await fetch("http://localhost:8000/user/subscriptions", {
-        credentials: "include",
-      });
-
+      const updated = await fetch("http://localhost:8000/user/subscriptions", { credentials: "include" });
       const updatedData = await updated.json();
       setSubscribedBots(Array.isArray(updatedData) ? updatedData : []);
     } catch (err) {
@@ -207,7 +194,9 @@ function Trade() {
   if (isCoinbaseLinked === false) return <Navigate to="/link-coinbase" />;
   if (isLoading) return <CircularProgress sx={{ m: 5 }} />;
 
-  const usdBalance = parseFloat(balance[userId]?.USD || 0).toFixed(2);
+  const selectedBalance = selectedPortfolio
+    ? parseFloat(balance[selectedPortfolio]?.USD || 0).toFixed(2)
+    : "0.00";
 
   return (
     <DashboardLayout>
@@ -217,16 +206,15 @@ function Trade() {
           <Grid item xs={12} sm={6} lg={4}>
             <Card sx={{ backgroundColor: "#1a1a1a", p: 3, mt: 3 }}>
               <MDTypography variant="h5" color="white" gutterBottom>
-                Coinbase Balance
+                Portfolio USD Balance
               </MDTypography>
               <MDBox mb={2} mt={5}>
                 <MDTypography color="white">
-                  <strong>Balance:</strong> ${usdBalance}
+                  <strong>Balance:</strong> ${selectedBalance}
                 </MDTypography>
               </MDBox>
             </Card>
           </Grid>
-
           <Grid item xs={12} sm={6} lg={4}>
             <Card sx={{ backgroundColor: "#1a1a1a", p: 3, mt: 3 }}>
               <MDTypography variant="h5" color="white" gutterBottom>
@@ -245,13 +233,11 @@ function Trade() {
               )}
             </Card>
           </Grid>
-
           <Grid item xs={12} sm={6} lg={4}>
             <Card sx={{ backgroundColor: "#1a1a1a", p: 3, mt: 3 }}>
               <MDTypography variant="h5" color="white" gutterBottom>
                 Subscribe to a Bot
               </MDTypography>
-
               <MDBox mb={2}>
                 <FormControl fullWidth>
                   <InputLabel sx={{ color: "white" }}>Select Portfolio</InputLabel>
@@ -273,7 +259,6 @@ function Trade() {
                   </Select>
                 </FormControl>
               </MDBox>
-
               <MDBox mb={2}>
                 <FormControl fullWidth>
                   <InputLabel sx={{ color: "white" }}>Select Bot</InputLabel>
@@ -295,7 +280,6 @@ function Trade() {
                   </Select>
                 </FormControl>
               </MDBox>
-
               <Button variant="contained" color="primary" onClick={handleSubscribe}>
                 Subscribe
               </Button>
