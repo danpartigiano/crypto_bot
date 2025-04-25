@@ -7,6 +7,7 @@ import Trade from "layouts/trade";
 import SignIn from "layouts/authentication/sign-in";
 import SignUp from "layouts/authentication/sign-up";
 import LinkCoinbase from "layouts/link-coinbase";
+import Profile from "layouts/profile"; // 추가
 
 // @mui icons
 import Icon from "@mui/material/Icon";
@@ -20,15 +21,6 @@ const routes = [
     route: "/dashboard",
     component: <Dashboard />,
   },
-  /*
-  {
-    type: "collapse",
-    name: "Trade History",
-    key: "trade-history",
-    icon: <Icon fontSize="small">table_view</Icon>,
-    route: "/trade-history",
-    component: <TablesHistory />,
-  },*/
   {
     type: "collapse",
     name: "Trade",
@@ -36,6 +28,14 @@ const routes = [
     icon: <Icon fontSize="small">receipt_long</Icon>,
     route: "/trade",
     component: <Trade />,
+  },
+  {
+    type: "collapse",
+    name: "Profile",
+    key: "profile",
+    icon: <Icon fontSize="small">person</Icon>,
+    route: "/profile",
+    component: <Profile />,
   },
   {
     key: "sign-in",

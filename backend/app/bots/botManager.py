@@ -124,7 +124,7 @@ def load_bot_into_db(bot_info: dict):
                 return bot.id
         except Exception as e:
             db.rollback()
-            logger.error(f"Unable to add/update {bot_info["name"]} in db: {e}")
+            logger.error(f"Unable to add/update {bot_info['name']} in db: {e}")
             return None
 
 def shutdown_all_bots():

@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 /**
 =========================================================
 * Material Dashboard 2 React - v2.2.0
@@ -52,7 +54,11 @@ function ProfileInfoCard({ title, description, info, social, action, shadow }) {
   });
 
   // Push the object values into the values array
-  Object.values(info).forEach((el) => values.push(el !== null && el !== undefined ? String(el) : "N/A"));
+  Object.values(info).forEach((el) => 
+    values.push(
+      el !== null && el !== undefined ? String(el) : "N/A"
+    )
+  );
 
   // Render the card info items
   const renderItems = labels.map((label, key) => (
@@ -66,24 +72,6 @@ function ProfileInfoCard({ title, description, info, social, action, shadow }) {
     </MDBox>
   ));
 
-  // Render the card social media icons
-  const renderSocial = social.map(({ link, icon, color }) => (
-    <MDBox
-      key={color}
-      component="a"
-      href={link}
-      target="_blank"
-      rel="noreferrer"
-      fontSize={size.lg}
-      color={socialMediaColors[color].main}
-      pr={1}
-      pl={0.5}
-      lineHeight={1}
-    >
-      {icon}
-    </MDBox>
-  ));
-
   return (
     <Card sx={{ height: "100%", boxShadow: !shadow && "none" }}>
       <MDBox display="flex" justifyContent="space-between" alignItems="center" pt={2} px={2}>
@@ -91,9 +79,6 @@ function ProfileInfoCard({ title, description, info, social, action, shadow }) {
           {title}
         </MDTypography>
         <MDTypography component={Link} to={action.route} variant="body2" color="secondary">
-          <Tooltip title={action.tooltip} placement="top">
-            <Icon>edit</Icon>
-          </Tooltip>
         </MDTypography>
       </MDBox>
       <MDBox p={2}>
@@ -108,10 +93,6 @@ function ProfileInfoCard({ title, description, info, social, action, shadow }) {
         <MDBox>
           {renderItems}
           <MDBox display="flex" py={1} pr={2}>
-            <MDTypography variant="button" fontWeight="bold" textTransform="capitalize">
-              social: &nbsp;
-            </MDTypography>
-            {renderSocial}
           </MDBox>
         </MDBox>
       </MDBox>
@@ -128,8 +109,7 @@ ProfileInfoCard.defaultProps = {
 ProfileInfoCard.propTypes = {
   title: PropTypes.string.isRequired,
   description: PropTypes.string.isRequired,
-  info: PropTypes.objectOf(PropTypes.string).isRequired,
-  social: PropTypes.arrayOf(PropTypes.object).isRequired,
+  info: PropTypes.object.isRequired,
   action: PropTypes.shape({
     route: PropTypes.string.isRequired,
     tooltip: PropTypes.string.isRequired,

@@ -77,7 +77,7 @@ def bots(data: Subscription, request: Request, db: Session = Depends(get_session
                 logger.error(f"User {user_data.id} is missing assets {required_assets}, so they can't subscribe to {bot.id}")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Missing assets {required_assets} in portfolio {portfolio["portfolio"]["name"]}. Unable to subscribe to Bot {bot.name}"
+                    detail=f"Missing assets {required_assets} in portfolio {portfolio['portfolio']['name']}. Unable to subscribe to Bot {bot.name}"
                 )
             else:
                 subscription = bot_helper.subscribe_user_to_bot(user=user_data, bot=bot, portfolio_uuid=data.portfolio_uuid, db=db)

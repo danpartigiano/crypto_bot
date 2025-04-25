@@ -1,6 +1,7 @@
+/* eslint-disable */
 import { useAuth } from "context/AuthContext";
 import { Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // @mui material components
 import Grid from "@mui/material/Grid";
@@ -22,7 +23,7 @@ import DashboardNavbar from "examples/Navbars/DashboardNavbar";
 import Footer from "examples/Footer";
 
 function Trade() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading: authLoading, checked } = useAuth();
   const [isCoinbaseLinked, setIsCoinbaseLinked] = useState(null);
   const [balance, setBalance] = useState({});
   const [isLoading, setIsLoading] = useState(true);
@@ -34,6 +35,13 @@ function Trade() {
   const [selectedBot, setSelectedBot] = useState("");
 
   const userId = user?.id;
+  const socketRef = useRef(null);
+
+  useEffect(() => {
+    if (isCoinbaseLinked === true && isAuthenticated && user?.id) {
+      console.log("Coinbase linked and ready. Proceeding without reload.");
+    }
+  }, [isCoinbaseLinked, isAuthenticated, user]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -55,39 +63,75 @@ function Trade() {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!user || !user.id || !isAuthenticated) return;
 
-    const socket = new WebSocket("ws://localhost:8000/coin/ws/balance");
+    const connectWebSocket = () => {
+      if (socketRef.current) return;
 
-    socket.onopen = () => {
-      socket.send(JSON.stringify({ userId }));
+      const socket = new WebSocket("ws://localhost:8000/coin/ws/balance");
+      socketRef.current = socket;
+
+      socket.onopen = () => {
+        socket.send(JSON.stringify({ userId: user.id }));
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data && typeof data === "object") {
+            setBalance((prev) => ({ ...prev, [user.id]: data }));
+          }
+        } catch (e) {
+          console.error("Invalid WebSocket message format:", e);
+        }
+      };
+
+      socket.onerror = (err) => console.error("WebSocket error:", err);
+      socket.onclose = () => {
+        console.log("WebSocket closed");
+        socketRef.current = null;
+      };
     };
 
-    socket.onmessage = (event) => {
+    const checkAccountsAndConnect = async () => {
       try {
-        const data = JSON.parse(event.data);
-        if (data && typeof data === "object") {
-          setBalance((prev) => ({ ...prev, [userId]: data }));
+        const res = await fetch("http://localhost:8000/coin/accounts", {
+          credentials: "include",
+        });
+        const data = await res.json();
+
+        if (Array.isArray(data.data) && data.data.length > 0) {
+          connectWebSocket();
+        } else {
+          console.warn("No accounts found");
+          setIsLoading(false);
         }
-      } catch (e) {
-        console.error("Invalid WebSocket message format:", e);
+      } catch (err) {
+        console.error("Error checking accounts:", err);
+        setIsLoading(false);
       }
     };
 
-    socket.onerror = (err) => console.error("WebSocket error:", err);
-    socket.onclose = () => console.log("WebSocket closed");
-
-    return () => socket.close();
-  }, [userId, balance]);
+    checkAccountsAndConnect();
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     if (userId && balance[userId]) {
       setIsLoading(false);
     }
+
+    const timeout = setTimeout(() => {
+      if (userId && !balance[userId]) {
+        console.warn("Timeout: forcing balance loading fallback");
+        setIsLoading(false);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timeout);
   }, [userId, balance]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || isCoinbaseLinked !== true) return;
 
     const fetchData = async () => {
       try {
@@ -121,7 +165,7 @@ function Trade() {
     };
 
     fetchData();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isCoinbaseLinked]);
 
   const handleSubscribe = async () => {
     if (!selectedPortfolio || !selectedBot) return;
@@ -157,7 +201,7 @@ function Trade() {
     }
   };
 
-  if (!user) return <div>Loading user...</div>;
+  if (!checked || authLoading) return <div>Loading...</div>;
   if (!isAuthenticated) return <Navigate to="/authentication/sign-in" />;
   if (isCoinbaseLinked === null) return <div>Checking Coinbase link...</div>;
   if (isCoinbaseLinked === false) return <Navigate to="/link-coinbase" />;

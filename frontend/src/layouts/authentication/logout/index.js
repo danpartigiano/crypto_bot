@@ -6,7 +6,7 @@ import { useAuth } from "context/AuthContext";
 
 function Logout() {
   const navigate = useNavigate();
-  const { setIsAuthenticated } = useAuth();
+  const { setIsAuthenticated, setUser } = useAuth();
 
   useEffect(() => {
     const doLogout = async () => {
@@ -24,14 +24,15 @@ function Logout() {
         }
 
         setIsAuthenticated(false);
-        navigate("/authentication/sign-in");
+        setUser(null);
+        navigate("/dashboard");
       } catch (error) {
         console.error("Error during logout:", error);
       }
     };
 
     doLogout();
-  }, [navigate, setIsAuthenticated]);
+  }, [navigate, setIsAuthenticated, setUser]);
 
   return null;
 }
