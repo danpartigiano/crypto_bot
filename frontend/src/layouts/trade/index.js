@@ -201,6 +201,38 @@ function Trade() {
     }
   };
 
+  const handleUnsubscribe = async (botId, portfolioUuid) => {
+    try {
+      const res = await fetch("http://localhost:8000/bots/unsubscribe", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bot_id: Number(botId),
+          portfolio_uuid: portfolioUuid,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Unsubscribe error:", errorText);
+        throw new Error("Failed to unsubscribe: " + errorText);
+      }
+
+      alert("Unsubscribed successfully!");
+
+      const updated = await fetch("http://localhost:8000/user/subscriptions", {
+        credentials: "include",
+      });
+
+      const updatedData = await updated.json();
+      setSubscribedBots(Array.isArray(updatedData) ? updatedData : []);
+    } catch (err) {
+      console.error("Unsubscription failed", err);
+      alert("Failed to unsubscribe.");
+    }
+  };
+
   if (!checked || authLoading) return <div>Loading...</div>;
   if (!isAuthenticated) return <Navigate to="/authentication/sign-in" />;
   if (isCoinbaseLinked === null) return <div>Checking Coinbase link...</div>;
@@ -240,6 +272,14 @@ function Trade() {
                     <MDTypography variant="body1" color="white">
                       Bot ID: {sub.bot_id}, Portfolio: {sub.portfolio_uuid}
                     </MDTypography>
+                    <Button
+                      variant="contained"
+                      color="error"
+                      sx={{ mt: 2 }}
+                      onClick={() => handleUnsubscribe(sub.bot_id, sub.portfolio_uuid)}
+                    >
+                      Unsubscribe
+                    </Button>
                   </MDBox>
                 ))
               )}
