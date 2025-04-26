@@ -39,9 +39,6 @@ function Footer() {
       px={1.5}
       py={2}
     >
-      <MDTypography variant="body2" color="text">
-        © {new Date().getFullYear()} My Project. All rights reserved.
-      </MDTypography>
     </MDBox>
   );
 }
