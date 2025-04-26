@@ -24,3 +24,9 @@ pydantic[email]
 python-decouple
 jwt
 requests
+requests
+redis
+authlib
+celery
+coinbase
+coloredlogs
