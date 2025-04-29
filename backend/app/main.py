@@ -6,6 +6,8 @@ import app.database.models #this ensures that the schema is loaded before initia
 from app.routers import user_router, coinbase_router, bot_router
 import logging, coloredlogs
 from app.bots import botManager
+import threading
+import os
 
 
 # Logging
@@ -32,21 +34,21 @@ def startup():
         Base.metadata.drop_all(bind=engine)  #Only for development purposes
     Base.metadata.create_all(bind=engine)
 
-    # botManager.startup_all_bots()
+    botManager.startup_all_bots()
 
 
-
-    #Bot logic
-
-    #add each bot to the db
-
-    #spawn each bot as thier own process
+    bot_check_thread = threading.Thread(target=botManager.check_bots, daemon=True)
+    bot_check_thread.start()
 
 
 def shutdown():
     '''Tasks to be done on shutdown'''
 
-    # botManager.shutdown_all_bots()
+    #signal bot monitor thread to stop
+    os.environ["BOT_MONITOR"] = "False"
+
+
+    botManager.shutdown_all_bots()
 
     engine.dispose()
 

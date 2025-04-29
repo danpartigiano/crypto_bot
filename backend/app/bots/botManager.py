@@ -6,6 +6,8 @@ from importlib import import_module
 from app.database.db_connection import context_get_session
 from app.database.models import Bot
 from sqlalchemy.future import select
+import time
+from app.utility.environment import environment
 
 
 #not using multithreading because of the global interpreter lock of python -> only one thread can execute python byte code at a time
@@ -16,7 +18,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-bot_processes = list()
+bot_processes: list[Process] = []
 
 BOTS_DIRECTORY = os.path.join(os.path.dirname(__file__))
 
@@ -85,8 +87,8 @@ def startup_all_bots():
             logger.error("Can't start a bot without an id")
             continue
 
-        process1 = Process(target=signal_generator, args=(bot_id,), name=f"{bot_name}Generator")
-        process2 = Process(target=signal_processor, args=(bot_id,), name=f"{bot_name}Processor")
+        process1 = Process(target=signal_generator, args=(bot_id,), name=f"{bot_name}:{bot_id}:Generator")
+        process2 = Process(target=signal_processor, args=(bot_id,), name=f"{bot_name}:{bot_id}:Processor")
         
         process1.start()
         process2.start()
@@ -136,3 +138,56 @@ def shutdown_all_bots():
             process.terminate()
             process.join()
             logger.info(f"{process.name} has been shutdown")
+
+def check_bots():
+    """Ensures all bot processes are running"""
+    global bot_processes
+
+    while environment.BOT_MONITOR:
+
+        for i, bot_process in enumerate(bot_processes):
+
+            if not bot_process.is_alive():
+                #bot is not alive, attempt restart once
+                logger.info(f"{bot_process.name} is dead, attempting restart")
+
+                bot_identity = bot_process.name.split(":")
+
+                bot_name = bot_identity[0]
+                bot_id = bot_identity[1]
+                bot_type = bot_identity[2]
+
+                bot_path = os.path.join(BOTS_DIRECTORY, bot_name)
+                
+                if bot_type == "Generator":
+
+                    signal_generator = import_module(f"app.bots.{bot_name}.signalGenerator").main
+
+                    new_process = Process(target=signal_generator, args=(bot_id,), name=f"{bot_name}:{bot_id}:Generator")
+
+                    new_process.start()
+
+                    bot_processes[i] = new_process
+
+
+                else:
+
+                    signal_processor = import_module(f"app.bots.{bot_name}.signalProcessor").main
+
+                    new_process = Process(target=signal_processor, args=(bot_id,), name=f"{bot_name}:{bot_id}:Processor")
+
+                    new_process.start()
+
+                    bot_processes[i] = new_process
+
+
+                    
+
+                logger.info(f"{bot_process.name} restarted")
+
+            else:
+                logger.info(f"{bot_process.name} is alive")
+        
+        time.sleep(60)
+        
+    logger.info("Bot monitoring stopped")      

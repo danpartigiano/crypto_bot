@@ -21,6 +21,9 @@ class Environment(BaseSettings):
     REDIS_HOST: str = config("REDIS_HOST", cast=str, default="localhost")
     REDIS_PORT: int = config("REDIS_PORT", cast=int, default=6379)
 
+    # Bot Monitoring
+    BOT_MONITOR: bool = config("BOT_MONITOR", cast=bool, default=True)
+
     PRODUCTION: bool = config("PRODUCTION", cast=bool, default=False)
     
 
